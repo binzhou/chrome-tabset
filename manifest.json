@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "TabSet",
+  "description": "",
+  "version": "0.1",
+  "permissions": [
+    "alarms",
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "scripts": ["underscore-min.js", "backgroundPage.js"]
+  }
+}
