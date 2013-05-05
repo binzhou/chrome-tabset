@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-ng-app="TabSetApp" data-ng-csp>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <link rel="stylesheet" type="text/css" href="../lib/bootstrap/css/bootstrap.min.css">
+  <script type="text/javascript" src="../lib/underscore/underscore.min.js"></script>
+  <script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+  <!--<script type="text/javascript" src="../lib/bootstrap/js/bootstrap.min.js"></script>-->
+  <script type="text/javascript" src="../lib/angular/angular.min.js"></script>
+  <script type="text/javascript" src="../lib/angular/ui-bootstrap.min.js"></script>
+  <script type="text/javascript" src="../app.js"></script>
+  <script type="text/javascript" src="controller.js"></script>
+
+  <style>
+    body {
+      width: 380px;
+      margin-bottom: 1em;
+      margin-top: 1em;
+    }
+    .nav-tabs a {
+      cursor: pointer;
+    }
+
+    .tab-content {
+      width: 380px;
+      max-height:440px;
+      overflow-y:auto;
+    }
+
+    .nav-stacked a {
+      width: 330px;
+      overflow-x:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+  </style>
+</head>
+<body data-ng-controller="BrowserActionController">
+  <span class="pull-right">
+    <a href="#"><i class="icon-wrench"></i></a>
+  </span>
+  <div autofocus id="main" data-ng-show="ready">
+  <tabs>
+    <pane data-ng-repeat="activeTabSet in activeTabSets" data-heading="{{ activeTabSet.name }}" data-active="showDetails">
+      <ul class="nav nav-tabs nav-stacked" data-ng-show="activeTabSet.entries.length > 0">
+        <li data-ng-repeat="entry in activeTabSet.entries" data-ng-class="{active: entry.isAlive}">
+          <a href="#" data-tooltip="{{ entry.url }}" data-ng-click="session.launchTabSetEntry(activeTabSet, entry)">
+            <button class="close">&times;</button>
+            {{ entry.title | default:entry.url }}
+          </a>
+        </li>
+      </ul>
+      <p data-ng-show="activeTabSet.entries.length == 0">
+        No tabs.
+      </p>
+    </pane>
+
+    <pane data-heading="TabSets">
+      <ul class="nav nav-tabs nav-stacked" data-ng-show="session.tabSets.length > 0">
+        <li data-ng-repeat="tab_set in session.tabSets" data-ng-class="{active: tab_set == activeTabSets[0]}">
+          <a href="#" data-ng-click="launchTabSet(tab_set)">
+            <button class="close">&times;</button>
+            <span class="pull-right">
+              <span class="badge" style='margin-right:1em;'>{{ tab_set.entries.length }}</span>
+            </span>
+            {{ tab_set.name }}<span ng-show="tab_set == activeTabSets[0]"> (current)</span>
+          </a>
+        </li>
+      </ul>
+      <p data-ng-show="session.tabSets.length == 0">
+        No tabsets.
+      </p>
+      <form class="form-inline" data-ng-hide="activeTabSet">
+      <input style="margin-left:0.5em;" type="text" placeholder="TabSet Name" autofocus data-ng-model="tabSetName">
+      <button class="btn" type="submit" data-ng-click="createTabSet(tabSetName)">Create TabSet</a>
+      </form>
+    </pane>
+  </tabs>
+  </div>
+</body>
+</html>

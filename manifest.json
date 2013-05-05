@@ -9,6 +9,14 @@
     "storage"
   ],
   "background": {
-    "scripts": ["underscore-min.js", "backgroundPage.js"]
+    "scripts": ["lib/underscore/underscore.min.js", "backgroundPage.js"]
+  },
+  "browser_action": {
+    "default_icon": {
+      "19": "img/inactive-19.png",
+      "38": "img/inactive-38.png"
+    },
+    "default_title": "No active TabSet",
+    "default_popup": "browser_action/popup.html"
   }
 }
