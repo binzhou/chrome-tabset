@@ -6,7 +6,8 @@
   "permissions": [
     "alarms",
     "tabs",
-    "storage"
+    "storage",
+    "chrome://favicon/"
   ],
   "background": {
     "scripts": ["lib/underscore/underscore.min.js", "backgroundPage.js"]

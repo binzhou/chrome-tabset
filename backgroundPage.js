@@ -10,28 +10,46 @@ Session.prototype._trackableUrl = function(u) {
   return /^https?:\/\//.test(u);
 }
 
-Session.prototype._createTab = function(t, w_info) {
+Session.prototype._createTab = function(t, w_info, entry) {
   return {
     'id': t.id,
     'windowInfo': w_info,
     'tracked': true,
-    'entry': this._trackableUrl(t.url) ? {'url': t.url, 'title': t.title, 'isAlive': true} : null,
+    'entry': _.isUndefined(entry) ? this._createEntry(t) : entry
   }
 }
 
 Session.prototype._orphanTab = function(t_info) {
   var w_info = t_info.windowInfo;
   w_info.activeTabs.splice(_.indexOf(w_info.activeTabs, t_info), 1);
-  if (!_.isNull(t_info.entry)) {
-    var tab_set = w_info.tabSet;
-    tab_set.entries.splice(_.indexOf(tab_set.entries, t_info.entry), 1);
-  }
+  this._orphanEntry(t_info);
 }
 
 Session.prototype._insertTab = function(t_info, pos) {
   var w_info = t_info.windowInfo;
   w_info.activeTabs.splice(pos, 0, t_info);
   this._insertEntry(t_info);
+}
+
+Session.prototype._createEntry = function(t) {
+  return this._trackableUrl(t.url) ? {
+      'url': t.url,
+      'title': t.title,
+      'isAlive': true
+    } : null;
+}
+
+Session.prototype._matchOrCreateEntry = function(tab_set, t, extra) {
+  var criteria = {'url': t.url};
+  if (!_.isUndefined(extra)) {
+    _.extend(criteria, extra);
+  }
+  var entry = _.findWhere(tab_set.entries, criteria);
+  if (!_.isUndefined(entry)) {
+    return entry;
+  } else{
+    return this._createEntry(t);
+  }
 }
 
 Session.prototype._insertEntry = function(t_info) {
@@ -41,15 +59,40 @@ Session.prototype._insertEntry = function(t_info) {
   var w_info = t_info.windowInfo;
   var insertPos = _.indexOf(w_info.activeTabs, t_info);
   if (insertPos == w_info.activeTabs.length - 1) {
-    w_info.tabSet.entries.push(t_info.entry);
+    var right_pos = w_info.tabSet.entries.length;
   } else {
     var next_entry = w_info.activeTabs[insertPos+1].entry;
-    var ts_pos = _.indexOf(w_info.tabSet.entries, next_entry);
-    w_info.tabSet.entries.splice(ts_pos, 0, t_info.entry);
+    var right_pos = _.indexOf(w_info.tabSet.entries, next_entry);
+  }
+
+  if (insertPos == 0) {
+    var left_pos = 0;
+  } else {
+    var prev_entry = w_info.activeTabs[insertPos-1].entry;
+    var left_pos = _.indexOf(w_info.tabSet.entries, prev_entry);
+  }
+
+  var cur_pos = _.indexOf(w_info.tabSet.entries, t_info.entry);
+  if (cur_pos < left_pos || cur_pos > right_pos) {
+    if (cur_pos >= 0) {
+      w_info.tabSet.entries.splice(cur_pos, 1);
+      if (cur_pos < right_pos) {
+        right_pos--;
+      }
+    }
+    w_info.tabSet.entries.splice(right_pos, 0, t_info.entry);
   }
 }
 
 Session.prototype._orphanEntry = function(t_info) {
+  if (_.isNull(t_info.entry)) {
+    return;
+  }
+  var tab_set = t_info.windowInfo.tabSet;
+  tab_set.entries.splice(_.indexOf(tab_set.entries, t_info.entry), 1);
+}
+
+Session.prototype._dropEntry = function(t_info) {
   if (_.isNull(t_info.entry)) {
     return;
   }
@@ -72,7 +115,11 @@ Session.prototype._tabCreated = function(t) {
     return;
   }
   var w_info = this.trackedWindows[t.windowId];
-  var t_info = this._createTab(t, w_info);
+  var entry = this._matchOrCreateEntry(w_info.tabSet, t, {'isAlive': false});
+  if (! _.isNull(entry)) {
+    entry.isAlive = true;
+  }
+  var t_info = this._createTab(t, w_info, entry);
   this._insertTab(t_info, t.index);
   this.trackedTabs[t.id] = t_info;
 }
@@ -83,22 +130,19 @@ Session.prototype._tabChanged = function(tid, change, t) {
   }
 
   var t_info = this.trackedTabs[tid];
-  var entry_delta = {
-    'url': _.has(change, 'url') ? change.url : t.url,
-    'title': t.title
-  };
-
-  if (!this._trackableUrl(entry_delta.url)) {
-    this._orphanEntry(t_info);
+  var new_entry = this._matchOrCreateEntry(t_info.windowInfo.tabSet, t);
+  if (_.isNull(new_entry)) {
+    this._dropEntry(t_info);
     return;
   }
 
   if (! _.isNull(t_info.entry)) {
-    _.extend(t_info.entry, entry_delta);
+    _.extend(t_info.entry, _.omit(new_entry, 'isAlive'));
     return;
   }
 
-  t_info.entry = _.extend({'isAlive': true}, entry_delta);
+  t_info.entry = new_entry;
+  t_info.entry.isAlive = true;
   this._insertEntry(t_info);
 }
 
@@ -139,7 +183,7 @@ Session.prototype._tabRemoved = function(tid, remove) {
   }
   var t_info = this.trackedTabs[tid];
   if (t_info.tracked) {
-    this._orphanEntry(t_info);
+    this._dropEntry(t_info);
   }
   this._orphanTab(t_info);
   delete this.trackedTabs[t_info.id];
@@ -245,15 +289,11 @@ Session.prototype.launchTabSet = function(tab_set, cb) {
       'tabSet': tab_set
     }
 
-    w_info.activeTabs = _.map(w.tabs, function(t) {
-      return self._createTab(t, w_info);
+    w_info.activeTabs = _.map(_.zip(live_entries, w.tabs), function(item) {
+      var entry = item[0];
+      var t = item[1];
+      return self._createTab(t, w_info, entry);
     });
-
-    _.each(_.zip(live_entries, w_info.activeTabs), function(pair) {
-      var entry = pair[0];
-      var t_info = pair[1];
-      t_info.entry = entry;
-    })
 
     _.each(w_info.activeTabs, function(t_info) {
       self.trackedTabs[t_info.id] = t_info;
@@ -262,6 +302,46 @@ Session.prototype.launchTabSet = function(tab_set, cb) {
 
     self._changeBrowserAction(w.id);
     cb(w.id);
+  });
+}
+
+Session.prototype.launchTabSetEntry = function(tab_set, entry, cb) {
+  var idx = _.indexOf(tab_set.entries, entry)
+  if (idx < 0) {
+    cb();
+    return;
+  }
+
+  var w_info = _.findWhere(this.trackedWindows, {"tabSet": tab_set});
+  if (_.isUndefined(w_info)) {
+    cb();
+    return;
+  }
+
+  var t_info = _.findWhere(this.trackedTabs, {"windowInfo": w_info, "entry": entry});
+  if (! _.isUndefined(t_info)) {
+    chrome.tabs.update(t_info.id, {"active": true}, cb);
+    return;
+  }
+
+  var self = this;
+  var insert_entry = _.chain(tab_set.entries).rest(idx+1)
+                      .findWhere({"isAlive": true})
+                      .value();
+
+  if (_.isUndefined(insert_entry)) {
+    var index = w_info.activeTabs.length;
+  } else {
+    var insert_t_info = _.findWhere(w_info.activeTabs, {"entry": insert_entry});
+    var index = _.indexOf(w_info.activeTabs, insert_t_info);
+  }
+
+  chrome.tabs.create({
+    "windowId": w_info.id,
+    "index": index,
+    "url": entry.url
+  }, function(t) {
+    cb(t.id);
   });
 }
 

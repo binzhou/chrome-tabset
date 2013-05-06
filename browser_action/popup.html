@@ -3,11 +3,12 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <link rel="stylesheet" type="text/css" href="../lib/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="../lib/fontawesome/css/font-awesome.min.css">
   <script type="text/javascript" src="../lib/underscore/underscore.min.js"></script>
   <script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
-  <!--<script type="text/javascript" src="../lib/bootstrap/js/bootstrap.min.js"></script>-->
   <script type="text/javascript" src="../lib/angular/angular.min.js"></script>
   <script type="text/javascript" src="../lib/angular/ui-bootstrap.min.js"></script>
+  <script type="text/javascript" src="../lib/angular/ui-if.js"></script>
   <script type="text/javascript" src="../app.js"></script>
   <script type="text/javascript" src="controller.js"></script>
 
@@ -23,7 +24,7 @@
 
     .tab-content {
       width: 380px;
-      max-height:440px;
+      height:440px;
       overflow-y:auto;
     }
 
@@ -37,15 +38,41 @@
 </head>
 <body data-ng-controller="BrowserActionController">
   <span class="pull-right">
-    <a href="#"><i class="icon-wrench"></i></a>
+    <a href="#"><i class="icon-cogs"></i></a>
   </span>
   <div autofocus id="main" data-ng-show="ready">
   <tabs>
-    <pane data-ng-repeat="activeTabSet in activeTabSets" data-heading="{{ activeTabSet.name }}" data-active="showDetails">
+    <pane data-ui-if="activeTabSet" data-heading="{{ activeTabSet.name }}" data-active="showDetails">
+      <div class="btn-toolbar">
+        <div class="btn-group" data-ng-init="activeFilter = 'all'">
+          <button class="btn" data-ng-model="activeFilter" data-btn-radio="'open'">Opened</button>
+          <button class="btn" data-ng-model="activeFilter" data-btn-radio="'close'">Closed</button>
+          <button class="btn" data-ng-model="activeFilter" data-btn-radio="'all'">All</button>
+        </div>
+        <div class="btn-group">
+          <button class="btn" data-tooltip="Export" data-tooltip-placement="bottom" data-ng-click="openTabSetExport()">
+            <i class="icon-download-alt"></i>
+          </button>
+        </div>
+        <div class="btn-group">
+          <button class="btn" data-tooltip="Rename" data-tooltip-placement="bottom">
+            <i class="icon-edit"></i>
+          </button>
+          <button class="btn" data-tooltip="Compact" data-tooltip-placement="bottom">
+            <i class="icon-resize-small"></i>
+          </button>
+        </div>
+        <div class="btn-group">
+           <button class="btn btn-danger" data-tooltip="Delete All" data-tooltip-placement="bottom">
+            <i class="icon-fire"></i>
+          </button>
+        </div>
+      </div>
       <ul class="nav nav-tabs nav-stacked" data-ng-show="activeTabSet.entries.length > 0">
-        <li data-ng-repeat="entry in activeTabSet.entries" data-ng-class="{active: entry.isAlive}">
-          <a href="#" data-tooltip="{{ entry.url }}" data-ng-click="session.launchTabSetEntry(activeTabSet, entry)">
+        <li data-ng-repeat="entry in activeTabSet.entries|filter:entryFilter(activeFilter)">
+          <a href="#" data-tooltip="{{ entry.url }}" data-ng-class="{muted: entry.isAlive}" data-ng-click="launchTabSetEntry(entry)">
             <button class="close">&times;</button>
+            <img src="{{ entry.url | favicon }}">
             {{ entry.title | default:entry.url }}
           </a>
         </li>
@@ -56,26 +83,68 @@
     </pane>
 
     <pane data-heading="TabSets">
+      <div class="btn-toolbar">
+        <div class="input-append" style="margin-bottom:0; position:relative; height: 30px;" data-ng-hide="activeTabSet">
+          <form class="form-inline">
+            <input class="input-small" type="text" placeholder="New TabSet" autofocus data-ng-model="tabSetName">
+            <button class="btn" style="margin-right:0.5em;" type="submit" data-tooltip="Create New TabSet" data-tooltip-placement="bottom" data-ng-click="createTabSet(tabSetName)">
+              <i class="icon-external-link"></i>
+            </button>
+          </form>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" data-tooltip="Export" data-tooltip-placement="bottom" data-ng-click="openAllExport()">
+            <i class="icon-download-alt"></i>
+          </button>
+          <button class="btn" data-tooltip="Import" data-tooltip-placement="bottom">
+            <i class="icon-upload-alt"></i>
+          </button>
+        </div>
+
+        <div class="btn-group">
+           <button class="btn btn-danger" data-tooltip="Delete All" data-tooltip-placement="bottom">
+            <i class="icon-fire"></i>
+          </button>
+        </div>
+      </div>
       <ul class="nav nav-tabs nav-stacked" data-ng-show="session.tabSets.length > 0">
-        <li data-ng-repeat="tab_set in session.tabSets" data-ng-class="{active: tab_set == activeTabSets[0]}">
+        <li data-ng-repeat="tab_set in session.tabSets" data-ng-class="{active: tab_set == activeTabSet}">
           <a href="#" data-ng-click="launchTabSet(tab_set)">
             <button class="close">&times;</button>
             <span class="pull-right">
               <span class="badge" style='margin-right:1em;'>{{ tab_set.entries.length }}</span>
             </span>
-            {{ tab_set.name }}<span ng-show="tab_set == activeTabSets[0]"> (current)</span>
+            {{ tab_set.name }}<span ng-show="tab_set == activeTabSet"> (current)</span>
           </a>
         </li>
       </ul>
       <p data-ng-show="session.tabSets.length == 0">
         No tabsets.
       </p>
-      <form class="form-inline" data-ng-hide="activeTabSet">
-      <input style="margin-left:0.5em;" type="text" placeholder="TabSet Name" autofocus data-ng-model="tabSetName">
-      <button class="btn" type="submit" data-ng-click="createTabSet(tabSetName)">Create TabSet</a>
-      </form>
     </pane>
   </tabs>
   </div>
+
+  <div data-modal="tabSetExportOpened" data-close="closeTabSetExport()">
+    <div class="modal-header">
+      <button class="close" data-ng-click="closeTabSetExport()">&times;</button>
+      <h4>Export TabSet: {{ activeTabSet.name }}</h4>
+    </div>
+    <div class="modal-body">
+      <pre data-auto-select style="max-height:300px; overflow-y:auto;">{{ [activeTabSet] | json }}</pre>
+    </div>
+  </div>
+
+  <div data-modal="allExportOpened" data-close="closeAllExport()">
+    <div class="modal-header">
+      <button class="close" data-ng-click="closeAllExport()">&times;</button>
+      <h4>Export All TabSets</h4>
+    </div>
+    <div class="modal-body">
+      <pre data-auto-select style="max-height:300px; overflow-y:auto;">{{ session.tabSets | json }}</pre>
+    </div>
+  </div>
+
 </body>
 </html>

@@ -1,12 +1,12 @@
 function BrowserActionController($scope, session) {
   $scope.session = session;
   $scope.ready = false;
-  $scope.activeTabSets = null;
   $scope.showDetails = false;
+  $scope.activeTabSet = null;
 
   var updateTabSet = function(tab_set) {
     $scope.$apply(function(scope) {
-      scope.activeTabSets = [tab_set];
+      scope.activeTabSet = tab_set;
       scope.showDetails = true;
     });
   }
@@ -20,6 +20,12 @@ function BrowserActionController($scope, session) {
     });
   });
 
+  $scope.entryFilter = function(filter) {
+    return function(entry) {
+      return (filter!='open' || entry.isAlive) && (filter!='close' || !entry.isAlive);
+    };
+  };
+
   $scope.createTabSet = function(name) {
     chrome.windows.getCurrent({'populate':true}, function(w) {
       session.createTabSet(name, w, updateTabSet);
@@ -30,5 +36,27 @@ function BrowserActionController($scope, session) {
     session.launchTabSet(tab_set, function() {
       window.close();
     });
+  };
+
+  $scope.launchTabSetEntry = function(entry) {
+    session.launchTabSetEntry($scope.activeTabSet, entry, function() {
+      window.close();
+    })
+  };
+
+  $scope.openTabSetExport = function() {
+    $scope.tabSetExportOpened = true;
+  };
+
+  $scope.closeTabSetExport = function() {
+    $scope.tabSetExportOpened = false;
+  };
+
+  $scope.openAllExport = function() {
+    $scope.allExportOpened = true;
+  };
+
+  $scope.closeAllExport = function() {
+    $scope.allExportOpened = false;
   };
 }
