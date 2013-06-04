@@ -10,7 +10,12 @@
     "chrome://favicon/"
   ],
   "background": {
-    "scripts": ["lib/underscore/underscore.min.js", "backgroundPage.js"]
+    "scripts": [
+      "lib/uuid.min.js",
+      "lib/angular/angular.min.js",
+      "lib/underscore/underscore.min.js",
+      "backgroundPage.js"
+    ]
   },
   "browser_action": {
     "default_icon": {

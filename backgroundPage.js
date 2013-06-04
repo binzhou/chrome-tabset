@@ -1,378 +1,413 @@
-function Session(cb) {
-  this.trackedWindows = {};
-  this.trackedTabs = {};
-
-  this.loaded = false;
-  this.load(cb);
+function validDateOrNull(str) {
+  var date = new Date(str);
+  return isNaN(date.getTime()) ? null : date;
 }
 
-Session.prototype._trackableUrl = function(u) {
-  return /^https?:\/\//.test(u);
+var Entry = function(args) {
+  this.id = UUID();
+  _.extend(this, {
+    'url': '',
+    'title': '',
+    'isOpen': false,
+    'created': new Date()
+  });
+  this.set(args);
 }
 
-Session.prototype._createTab = function(t, w_info, entry) {
-  return {
-    'id': t.id,
-    'windowInfo': w_info,
-    'tracked': true,
-    'entry': _.isUndefined(entry) ? this._createEntry(t) : entry
+Entry.prototype.set = function(args) {
+  _.extend(this, _.pick(args, 'url', 'title', 'isOpen'));
+}
+
+Entry.prototype.open = function() {
+  if (!this.isOpen) {
+    this.set({'isOpen': true});
+    this.lastOpened = new Date();
   }
 }
 
-Session.prototype._orphanTab = function(t_info) {
-  var w_info = t_info.windowInfo;
-  w_info.activeTabs.splice(_.indexOf(w_info.activeTabs, t_info), 1);
-  this._orphanEntry(t_info);
-}
-
-Session.prototype._insertTab = function(t_info, pos) {
-  var w_info = t_info.windowInfo;
-  w_info.activeTabs.splice(pos, 0, t_info);
-  this._insertEntry(t_info);
-}
-
-Session.prototype._createEntry = function(t) {
-  return this._trackableUrl(t.url) ? {
-      'url': t.url,
-      'title': t.title,
-      'isAlive': true
-    } : null;
-}
-
-Session.prototype._matchOrCreateEntry = function(tab_set, t, extra) {
-  var criteria = {'url': t.url};
-  if (!_.isUndefined(extra)) {
-    _.extend(criteria, extra);
-  }
-  var entry = _.findWhere(tab_set.entries, criteria);
-  if (!_.isUndefined(entry)) {
-    return entry;
-  } else{
-    return this._createEntry(t);
+Entry.prototype.close = function() {
+  if (this.isOpen) {
+    this.set({'isOpen': false});
+    this.lastClosed = new Date();
   }
 }
 
-Session.prototype._insertEntry = function(t_info) {
-  if (_.isNull(t_info.entry)) {
-    return;
-  }
-  var w_info = t_info.windowInfo;
-  var insertPos = _.indexOf(w_info.activeTabs, t_info);
-  if (insertPos == w_info.activeTabs.length - 1) {
-    var right_pos = w_info.tabSet.entries.length;
+Entry.fromObj = function(obj) {
+  var entry = new Entry(obj);
+  entry.lastOpened = validDateOrNull(obj.lastOpened);
+  entry.lastClosed = validDateOrNull(obj.lastClosed);
+  entry.created = validDateOrNull(obj.created);
+  return entry;
+}
+
+Entry.prototype.toObj = function() {
+  return _.pick(this, 'url', 'title', 'isOpen', 'created', 'lastOpened', 'lastClosed');
+}
+
+
+var TabSet = function(args) {
+  this.id = UUID();
+  _.extend(this, {
+    'name': '',
+    'created': new Date()
+  });
+
+  this.entries = [];
+  this.set(args);
+}
+
+TabSet.prototype.set = function(args) {
+  _.extend(this, _.pick(args, 'name'));
+}
+TabSet.prototype.open = function() {
+  this.lastOpened = new Date();
+}
+TabSet.prototype.close = function() {
+  this.lastClosed = new Date();
+}
+
+TabSet.fromObj = function(obj) {
+  var tab_set = new TabSet(obj);
+  tab_set.entries = _.map(obj.entries, function(e) { return Entry.fromObj(e); });
+  tab_set.lastOpened = validDateOrNull(obj.lastOpened);
+  tab_set.lastClosed = validDateOrNull(obj.lastClosed);
+  tab_set.created = validDateOrNull(obj.created)
+  return tab_set;
+}
+
+TabSet.prototype.toObj = function() {
+  return _.chain(this)
+          .pick('name', 'created', 'lastOpened', 'lastClosed')
+          .extend({
+            'entries': _.map(this.entries, function(e) { return e.toObj(); })
+          })
+          .value();
+}
+
+TabSet.prototype.insertEntry = function(e, where) {
+  var cur_idx = _.indexOf(this.entries, e);
+  if (_.has(where, 'index')) {
+    var new_idx = where.index;
+    if (new_idx != cur_idx) {
+      if (cur_idx >= 0) {
+        this.entries.splice(cur_idx, 1);
+      }
+      this.entries.splice(new_idx, 0, e);
+    }
   } else {
-    var next_entry = w_info.activeTabs[insertPos+1].entry;
-    var right_pos = _.indexOf(w_info.tabSet.entries, next_entry);
-  }
+    var before_idx = _.indexOf(this.entries, where.before);
+    if (before_idx < 0) {
+      before_idx = this.entries.length+1;
+    }
 
-  if (insertPos == 0) {
-    var left_pos = 0;
-  } else {
-    var prev_entry = w_info.activeTabs[insertPos-1].entry;
-    var left_pos = _.indexOf(w_info.tabSet.entries, prev_entry);
-  }
+    var after_idx = _.indexOf(this.entries, where.after);
+    if (after_idx < 0) {
+      after_idx = -1;
+    }
 
-  var cur_pos = _.indexOf(w_info.tabSet.entries, t_info.entry);
-  if (cur_pos < left_pos || cur_pos > right_pos) {
-    if (cur_pos >= 0) {
-      w_info.tabSet.entries.splice(cur_pos, 1);
-      if (cur_pos < right_pos) {
-        right_pos--;
+    if (after_idx >= before_idx) {
+      return;
+    }
+
+    if (cur_idx > before_idx || cur_idx <= after_idx) {
+      this.entries.splice(before_idx, 0, e);
+      if (cur_idx >= 0) {
+        this.entries.splice(cur_idx > before_idx ? cur_idx + 1 : cur_idx, 1);
       }
     }
-    w_info.tabSet.entries.splice(right_pos, 0, t_info.entry);
   }
 }
 
-Session.prototype._orphanEntry = function(t_info) {
-  if (_.isNull(t_info.entry)) {
-    return;
+TabSet.prototype.dropEntry = function(e) {
+  var idx = _.indexOf(this.entries, e);
+  if (idx >= 0) {
+    this.entries.splice(idx, 1);
   }
-  var tab_set = t_info.windowInfo.tabSet;
-  tab_set.entries.splice(_.indexOf(tab_set.entries, t_info.entry), 1);
 }
 
-Session.prototype._dropEntry = function(t_info) {
-  if (_.isNull(t_info.entry)) {
-    return;
-  }
-  t_info.entry.isAlive = false;
-  t_info.entry = null;
-}
-
-Session.prototype._cloneEntry = function(t_info) {
-  if (_.isNull(t_info.entry)) {
-    return;
-  }
-  var entry = _.clone(t_info.entry);
-  this._orphanEntry(t_info);
-  t_info.entry = entry;
-  this._positionTabSetEntry(t_info);
-}
-
-Session.prototype._tabCreated = function(t) {
-  if (! _.has(this.trackedWindows, t.windowId)) {
-    return;
-  }
-  var w_info = this.trackedWindows[t.windowId];
-  var entry = this._matchOrCreateEntry(w_info.tabSet, t, {'isAlive': false});
-  if (! _.isNull(entry)) {
-    entry.isAlive = true;
-  }
-  var t_info = this._createTab(t, w_info, entry);
-  this._insertTab(t_info, t.index);
-  this.trackedTabs[t.id] = t_info;
-}
-
-Session.prototype._tabChanged = function(tid, change, t) {
-  if (! _.has(this.trackedTabs, tid) || (! _.has(change, 'url') && change.status != 'complete')) {
-    return;
-  }
-
-  var t_info = this.trackedTabs[tid];
-  var new_entry = this._matchOrCreateEntry(t_info.windowInfo.tabSet, t);
-  if (_.isNull(new_entry)) {
-    this._dropEntry(t_info);
-    return;
-  }
-
-  if (! _.isNull(t_info.entry)) {
-    _.extend(t_info.entry, _.omit(new_entry, 'isAlive'));
-    return;
-  }
-
-  t_info.entry = new_entry;
-  t_info.entry.isAlive = true;
-  this._insertEntry(t_info);
-}
-
-Session.prototype._tabMoved = function(tid, move) {
-  if (! _.has(this.trackedTabs, tid)) {
-    return;
-  }
-
-  var t_info = this.trackedTabs[tid];
-  this._orphanTab(t_info);
-  this._insertTab(t_info, move.toIndex);
-}
-
-Session.prototype._tabDetached = function(tid, detach) {
-  if (! _.has(this.trackedTabs, tid)) {
-    return;
-  }
-
-  var t_info = this.trackedTabs[tid];
-  this._orphanTab(t_info);
-  delete this.trackedTabs[t_info.id];
-}
-
-Session.prototype._tabAttached = function(tid, attach) {
-  if (! _.has(this.trackedWindows, attach.newWindowId)) {
-    return;
-  }
-
+var TabSetManager = function(cb) {
   var self = this;
-  chrome.tabs.get(tid, function(t) {
-    self._tabCreated(t);
+  self.tabSets = [];
+
+  chrome.storage.local.get({"tabSets": []}, function(items) {
+    _.each(JSON.parse(items["tabSets"]), function(ts) { self.load(ts); });
+    if (!_.isUndefined(cb)) {
+      cb(self);
+    }
+  });
+}
+
+TabSetManager.prototype.load = function(obj) {
+  var self = this;
+  try {
+    var tab_set = TabSet.fromObj(obj);
+  } catch(err) {
+    return;
+  }
+  self.tabSets.push(tab_set);
+}
+
+TabSetManager.prototype.toObj = function() {
+  var self = this;
+  return _.map(self.tabSets, function(ts) { return ts.toObj(); });
+}
+
+TabSetManager.prototype.save = function(cb) {
+  var self = this;
+
+  chrome.storage.local.set({ "tabSets": JSON.stringify(this.toObj()) }, function() {
+    if (!_.isUndefined(cb)) {
+      cb(self);
+    }
+  });
+}
+
+TabSetManager.prototype.newTabSet = function(args) {
+  var tab_set = new TabSet(args);
+  this.tabSets.push(tab_set);
+  return tab_set;
+}
+
+TabSetManager.prototype.dropTabSet = function(tab_set) {
+  var idx = _.indexOf(this.tabSets, tab_set);
+  if (idx >= 0) {
+    this.tabSets.splice(idx, 1);
+  }
+}
+
+
+var SessionTab = function(tid) {
+  this.id = tid;
+  this.entry = null;
+}
+
+SessionTab.prototype.openEntry = function(e) {
+  this.entry = e;
+  this.entry.open();
+}
+
+SessionTab.prototype.closeEntry = function() {
+  if (this.entry != null) {
+    var e = this.entry;
+    this.entry = null;
+    e.close();
+    return e;
+  }
+}
+
+var SessionWindow = function(wid, tab_set) {
+  this.id = wid;
+  this.tabSet = tab_set;
+  this.activeTabs = [];
+  this.trackedTabs = {};
+  this.openEntries ={};
+}
+
+SessionWindow.prototype._openEntry = function(s_tab, entry) {
+  this.openEntries[entry.id] = s_tab;
+  s_tab.openEntry(entry);
+}
+
+SessionWindow.prototype._closeEntry = function(s_tab) {
+  if (s_tab.entry != null) {
+    delete this.openEntries[s_tab.entry.id];
+  }
+  s_tab.closeEntry();
+}
+
+SessionWindow.prototype.newTab = function(t, entry) {
+  var s_tab = this.trackedTabs[t.id];
+  if (_.isUndefined(s_tab)) {
+    s_tab = new SessionTab(t.id);
+    this.trackedTabs[t.id] = s_tab;
+    this.moveTab(t.id, t.index);
+  }
+  this.updateTab(t, entry);
+}
+
+SessionWindow.prototype.updateTab = function(t, entry) {
+  var s_tab = this.trackedTabs[t.id];
+  if (!_.isUndefined(entry)) {
+    this._closeEntry(s_tab);
+    if (_.isNull(entry)) {
+      return;
+    }
+  } else if (s_tab.entry != null) {
+    s_tab.entry.set(t);
+    return;
+  }
+
+  entry = entry || _.findWhere(this.tabSet.entries, {'url': t.url, 'isOpen': false}) || new Entry(t);
+  this._openEntry(s_tab, entry);
+  this.moveTabEntry(t.id);
+}
+
+SessionWindow.prototype.moveTab = function(tid, index) {
+  var s_tab = this.trackedTabs[tid];
+  var cur_idx = _.indexOf(this.activeTabs, s_tab);
+  if (cur_idx != index) {
+    if (cur_idx >= 0) {
+      this.activeTabs.splice(cur_idx, 1);
+    }
+    this.activeTabs.splice(index, 0, s_tab);
+    this.moveTabEntry(tid);
+  }
+}
+
+SessionWindow.prototype.moveTabEntry = function(tid) {
+  var s_tab = this.trackedTabs[tid];
+  if (s_tab.entry != null) {
+    var cur_idx = _.indexOf(this.activeTabs, s_tab);
+    var after_tab = this.activeTabs[cur_idx-1];
+    var before_tab = this.activeTabs[cur_idx+1];
+    this.tabSet.insertEntry(s_tab.entry, {
+      'after': after_tab && after_tab.entry,
+      'before': before_tab && before_tab.entry
+    })
+  }
+}
+
+SessionWindow.prototype.closeTab = function(tid) {
+  var s_tab = this.trackedTabs[tid];
+  if (!_.isUndefined(s_tab)) {
+    this._closeEntry(s_tab);
+    this.activeTabs.splice(_.indexOf(this.activeTabs, s_tab), 1);
+    delete this.trackedTabs[tid];
+  }
+}
+
+SessionWindow.prototype.swapTab = function(old_tid, new_tid) {
+  var s_tab = this.trackedTabs[old_tid];
+  if (!_.isUndefined(s_tab)) {
+    s_tab.id = new_tid;
+    delete this.trackedTabs[old_tid];
+    this.trackedTabs[new_tid] = s_tab;
+  }
+}
+
+SessionWindow.prototype.open = function() {
+  this.tabSet.open();
+}
+
+SessionWindow.prototype.close = function() {
+  this.tabSet.close();
+}
+
+var SessionManager = function(cb) {
+  var self = this;
+  self.trackedWindows = {};
+  self.openTabSets = {};
+
+  self.save = _.throttle(function() {
+    self.tabSetManager.save();
+  }, 10000);
+
+  self.tabSetManager = new TabSetManager(function(tsm) {
+    self.allTabSets = tsm.tabSets;
+
+    chrome.windows.onRemoved.addListener(function(wid) {
+      var s_window = self.trackedWindows[wid];
+      if (!_.isUndefined(s_window)) {
+        s_window.close();
+        delete self.openTabSets[s_window.tabSet.id];
+        delete self.trackedWindows[wid];
+        self.save();
+      }
+    });
+
+    chrome.windows.onFocusChanged.addListener(function(wid) {
+      self.updateBrowserAction(wid);
+    });
+
+    chrome.tabs.onCreated.addListener(function(t) {
+      var s_window = self.trackedWindows[t.windowId];
+      if (!_.isUndefined(s_window)) {
+        s_window.newTab(t, null); // new tab with no entry
+        if (self.isTrackableUrl(t.url)) {
+          s_window.updateTab(t);
+        }
+        self.save();
+      }
+    });
+
+    chrome.tabs.onUpdated.addListener(function(tid, change, t) {
+      var s_window = self.trackedWindows[t.windowId];
+      if (!_.isUndefined(s_window) && (_.has(change, 'url') || _.has(change, 'status'))) {
+        if (self.isTrackableUrl(t.url)) {
+          s_window.updateTab(t);
+        } else {
+          s_window.updateTab(t, null);
+        }
+        self.save();
+      }
+    });
+
+    chrome.tabs.onMoved.addListener(function(tid, move) {
+      var s_window = self.trackedWindows[move.windowId];
+      if (!_.isUndefined(s_window)) {
+        s_window.moveTab(tid, move.toIndex);
+        self.save();
+      }
+    });
+
+    chrome.tabs.onDetached.addListener(function(tid, info) {
+      var s_window = self.trackedWindows[info.oldWindowId];
+      if (!_.isUndefined(s_window)) {
+        s_window.closeTab(tid);
+        self.save();
+      }
+    });
+
+    chrome.tabs.onAttached.addListener(function(tid, info) {
+      var s_window = self.trackedWindows[info.newWindowId];
+      if (!_.isUndefined(s_window)) {
+        chrome.tabs.get(tid, function(t) {
+          s_window.newTab(t, null);
+          if (self.isTrackableUrl(t.url)) {
+            s_window.updateTab(t);
+          }
+          self.save();
+        });
+      }
+    });
+
+    chrome.tabs.onRemoved.addListener(function(tid, info) {
+      var s_window = self.trackedWindows[info.windowId];
+      if (!_.isUndefined(s_window) && !info.isWindowClosing) {
+        s_window.closeTab(tid);
+        self.save();
+      }
+    });
+
+    chrome.tabs.onReplaced.addListener(function(new_tid, old_tid) {
+      chrome.tabs.get(tid, function(t) {
+        var s_window = self.trackedWindows[t.windowId];
+        if (!_.isUndefined(s_window)) {
+          s_window.swapTab(old_tid, new_tid);
+          s_window.updateTab(t);
+          self.save();
+        }
+      });
+    });
+
+    if (!_.isUndefined(cb)) {
+      cb(self);
+    }
   })
 }
 
-Session.prototype._tabRemoved = function(tid, remove) {
-  if (! _.has(this.trackedTabs, tid) || remove.isWindowClosing) {
-    return;
-  }
-  var t_info = this.trackedTabs[tid];
-  if (t_info.tracked) {
-    this._dropEntry(t_info);
-  }
-  this._orphanTab(t_info);
-  delete this.trackedTabs[t_info.id];
+SessionManager.prototype.isTrackableUrl = function(u) {
+  return /^https?:\/\//.test(u);
 }
 
-Session.prototype._tabReplaced = function(new_tid, old_tid) {
-  if (! _.has(this.trackedTabs, old_tid)) {
-    return;
-  }
-
-  var self = this;
-  var t_info = self.trackedTabs[old_tid];
-  t_info.id = new_tid;
-
-  delete self.trackedTabs[old_tid];
-  self.trackedTabs[new_tid] = t_info;
-}
-
-Session.prototype._windowRemoved = function(wid) {
-  if (! _.has(this.trackedWindows, wid)) {
-    return;
-  }
-
-  var self = this;
-  var w_info = self.trackedWindows[wid];
-
-  _.each(w_info.activeTabs, function(t_info) {
-    if (!t_info.tracked) {
-      self._oprhanTab(t_info);
-    }
-    delete self.trackedTabs[t_info.id];
-  });
-
-  delete self.trackedWindows[wid];
-}
-
-Session.prototype.createTabSet = function(name, w, cb) {
-  if (_.isUndefined(cb) && _.isFunction(w)) {
-    var cb = w;
-    w = undefined;
-  }
-
-  var self = this;
-  if (_.isUndefined(w)) {
-    chrome.windows.create({"focused": true}, function(w) {
-      self.createTabSet(name, w, cb);
-    })
-    return;
-  }
-
-  if (_.has(self.trackedWindows, w.id)) {
-    var w_info = self.trackedWindows[w.id];
-    w_info.tabSet.name = name;
-  } else {
-    var tabs = _.sortBy(w.tabs, function(t) { return t.index; });
-
-    var w_info = {
-      'id': w.id
-    }
-
-    w_info.activeTabs = _.map(w.tabs, function(t) {
-      return self._createTab(t, w_info);
-    });
-
-    var entries = _.chain(w_info.activeTabs)
-      .filter(function(ti){ return ! _.isNull(ti.entry); })
-      .pluck('entry')
-      .value();
-
-    w_info.tabSet = {
-      'name': name,
-      'entries': entries
-    }
-
-    _.each(w_info.activeTabs, function(t_info) {
-      self.trackedTabs[t_info.id] = t_info;
-    })
-    self.trackedWindows[w_info.id] = w_info;
-    self.tabSets.push(w_info.tabSet);
-  }
-
-  self._changeBrowserAction(w.id);
-  cb(w_info.tabSet);
-}
-
-Session.prototype.launchTabSet = function(tab_set, cb) {
-  var w_info = _.findWhere(this.trackedWindows, {"tabSet": tab_set});
-  if (! _.isUndefined(w_info)) {
-    chrome.windows.update(w_info.id, {"focused": true}, cb);
-    return;
-  }
-
-  var self = this;
-  var live_entries = _.where(tab_set.entries, {"isAlive": true});
-  chrome.windows.create({
-    "url": _.pluck(live_entries, "url"),
-    "focused": true
-  }, function(w) {
-    var tabs = _.sortBy(w.tabs, function(t) { return t.index; });
-
-    var w_info = {
-      'id': w.id,
-      'tabSet': tab_set
-    }
-
-    w_info.activeTabs = _.map(_.zip(live_entries, w.tabs), function(item) {
-      var entry = item[0];
-      var t = item[1];
-      return self._createTab(t, w_info, entry);
-    });
-
-    _.each(w_info.activeTabs, function(t_info) {
-      self.trackedTabs[t_info.id] = t_info;
-    })
-    self.trackedWindows[w_info.id] = w_info;
-
-    self._changeBrowserAction(w.id);
-    cb(w.id);
-  });
-}
-
-Session.prototype.launchTabSetEntry = function(tab_set, entry, cb) {
-  var idx = _.indexOf(tab_set.entries, entry)
-  if (idx < 0) {
-    cb();
-    return;
-  }
-
-  var w_info = _.findWhere(this.trackedWindows, {"tabSet": tab_set});
-  if (_.isUndefined(w_info)) {
-    cb();
-    return;
-  }
-
-  var t_info = _.findWhere(this.trackedTabs, {"windowInfo": w_info, "entry": entry});
-  if (! _.isUndefined(t_info)) {
-    chrome.tabs.update(t_info.id, {"active": true}, cb);
-    return;
-  }
-
-  var self = this;
-  var insert_entry = _.chain(tab_set.entries).rest(idx+1)
-                      .findWhere({"isAlive": true})
-                      .value();
-
-  if (_.isUndefined(insert_entry)) {
-    var index = w_info.activeTabs.length;
-  } else {
-    var insert_t_info = _.findWhere(w_info.activeTabs, {"entry": insert_entry});
-    var index = _.indexOf(w_info.activeTabs, insert_t_info);
-  }
-
-  chrome.tabs.create({
-    "windowId": w_info.id,
-    "index": index,
-    "url": entry.url
-  }, function(t) {
-    cb(t.id);
-  });
-}
-
-Session.prototype.load = function(cb) {
-  var defaults = {
-    "tabSets": [],
-  };
-
-  var self = this;
-  chrome.storage.local.get(defaults, function(items) {
-    self.tabSets = items["tabSets"];
-    self.loaded = true;
-    chrome.windows.getCurrent({}, function(w) {
-      if (!_.isUndefined(w)) {
-        self._changeBrowserAction(w.id);
-      }
-      if (!_.isUndefined(cb)) {
-        cb(self);
-      }
-    })
-  });
-};
-
-Session.prototype._changeBrowserAction = function(wid){
-  if (this.loaded && _.has(this.trackedWindows, wid)) {
-    var w_info = this.trackedWindows[wid];
+SessionManager.prototype.updateBrowserAction = function(wid){
+  var s_window = this.trackedWindows[wid];
+  if (!_.isUndefined(s_window)) {
     chrome.browserAction.setTitle({
-      'title': "Current TabSet: "+w_info.tabSet.name
+      'title': "Current TabSet: "+s_window.tabSet.name
     });
     chrome.browserAction.setBadgeText({
-      'text': w_info.tabSet.name.slice(0,4)
+      'text': s_window.tabSet.name.slice(0,4)
     });
     chrome.browserAction.setIcon({
       'path': {
@@ -396,58 +431,164 @@ Session.prototype._changeBrowserAction = function(wid){
   }
 }
 
-var session = new Session();
+SessionManager.prototype.createTabSet = function(w, args, cb) {
+  var self = this;
+  var tab_set = self.tabSetManager.newTabSet(args);
 
-chrome.tabs.onCreated.addListener(function(t) {
-  if (session.loaded) {
-    session._tabCreated(t);
-  }
-})
+  var s_window = new SessionWindow(w.id, tab_set);
+  _.each(w.tabs, function(t) {
+    s_window.newTab(t, null); // new tab with no entry
+    if (self.isTrackableUrl(t.url)) {
+      s_window.updateTab(t);
+    }
+  });
 
-chrome.tabs.onUpdated.addListener(function(tid, c, t) {
-  if (session.loaded) {
-    session._tabChanged(tid, c, t);
-  }
-});
+  s_window.open();
+  self.trackedWindows[w.id] = s_window;
+  self.openTabSets[tab_set.id] = s_window;
 
-chrome.tabs.onMoved.addListener(function(tid, move) {
-  if (session.loaded) {
-    session._tabMoved(tid, move);
+  self.save();
+  if (!_.isUndefined(cb)) {
+    cb(tab_set);
   }
-});
+}
 
-chrome.tabs.onDetached.addListener(function(tid, detach) {
-  if (session.loaded) {
-    session._tabDetached(tid, detach);
+SessionManager.prototype.tabSetForWindow = function(wid) {
+  if (_.has(this.trackedWindows, wid)) {
+    return this.trackedWindows[wid].tabSet;
   }
-});
+}
 
-chrome.tabs.onAttached.addListener(function(tid, attach) {
-  if (session.loaded) {
-    session._tabAttached(tid, attach);
+SessionManager.prototype.launchTabSet = function(tab_set, cb) {
+  var self = this;
+  var s_window = self.openTabSets[tab_set.id];
+  if (!_.isUndefined(s_window)) {
+    chrome.windows.update(s_window.id, {'focused': true}, cb);
+    return;
   }
-});
 
-chrome.tabs.onRemoved.addListener(function(tid, remove) {
-  if (session.loaded) {
-    session._tabRemoved(tid, remove);
-  }
-});
+  var alive_entries = _.where(tab_set.entries, {'isOpen': true});
+  chrome.windows.create({'url': _.pluck(alive_entries, 'url'), 'focused': true}, function(w) {
+    s_window = new SessionWindow(w.id, tab_set);
+    var tabs = _.sortBy(w.tabs, function(t) { return t.index; });
+    _.each(alive_entries, function(entry, idx) {
+      s_window.newTab(tabs[idx], entry);
+    });
+    _.each(_.rest(tabs, alive_entries.length), function(t) {
+      s_window.newTab(t, null);
+      if (self.isTrackableUrl(t.url)) {
+        s_window.updateTab(t);
+      }
+    });
 
-chrome.tabs.onReplaced.addListener(function(new_tid, old_tid) {
-  if (session.loaded) {
-    session._tabReplaced(new_tid, old_tid);
-  }
-});
+    s_window.open();
+    self.trackedWindows[w.id] = s_window;
+    self.openTabSets[tab_set.id] = s_window;
 
-chrome.windows.onRemoved.addListener(function(wid) {
-  if (session.loaded) {
-    session._windowRemoved(wid);
-  }
-});
+    self.save();
+    if (!_.isUndefined(cb)) {
+      cb(w);
+    }
+  });
+}
 
-chrome.windows.onFocusChanged.addListener(function(wid) {
-  if (session.loaded) {
-    session._changeBrowserAction(wid);
+SessionManager.prototype.launchTabSetEntry = function(tab_set, entry, cb) {
+  var self = this;
+
+  var entry_idx = _.indexOf(tab_set.entries, entry);
+  var s_window = self.openTabSets[tab_set.id];
+  if (_.isUndefined(s_window) || entry_idx < 0) {
+    if (!_.isUndefined(cb)) {
+      cb();
+    }
+    return;
   }
-});
+
+  var s_tab = s_window.openEntries[entry.id];
+  if (!_.isUndefined(s_tab)) {
+    chrome.tabs.update(s_tab.id, {'active': true}, cb);
+    return;
+  }
+
+  var insert_idx = -1;
+  var before_entry = _.findWhere(_.rest(tab_set.entries, entry_idx+1), {'isOpen': true});
+  if (before_entry != null) {
+    _.any(s_window.activeTabs, function(s_tab) {
+      insert_idx += 1;
+      return s_tab.entry == before_entry;
+    });
+  }
+
+  if (insert_idx == -1) {
+    insert_idx = s_window.activeTabs.length;
+  }
+
+  chrome.tabs.create({
+    'index': insert_idx,
+    'active': false
+  }, function(t) {
+    s_window.updateTab(t, entry);
+    s_window.moveTabEntry(t.id);
+    self.save();
+    chrome.tabs.update(t.id, {
+      'url': entry.url,
+      'active': true
+    }, cb);
+  });
+}
+
+SessionManager.prototype.dropTabSetEntry = function(tab_set, entry , cb) {
+  var self = this;
+
+  var entry_idx = _.indexOf(tab_set.entries, entry);
+  if (entry_idx < 0) {
+    if (!_.isUndefined(cb)) {
+      cb();
+    }
+  }
+
+  tab_set.dropEntry(entry);
+  self.save();
+
+  var s_window = self.openTabSets[tab_set.id];
+
+  if (!_.isUndefined(s_window)) {
+    var s_tab = s_window.openEntries[entry.id];
+    if (!_.isUndefined(s_tab)) {
+      s_window.closeTab(s_tab.id);
+      chrome.tabs.remove(s_tab.id, cb);
+      return;
+    }
+  }
+
+  if (!_.isUndefined(cb)) {
+    cb();
+  }
+}
+
+SessionManager.prototype.dropTabSet = function(tab_set) {
+  var self = this;
+  var s_window = self.openTabSets[tab_set.id];
+  if (!_.isUndefined(s_window)) {
+    delete self.openTabSets[tab_set.id];
+    delete self.trackedWindows[s_window.id];
+  }
+
+  self.tabSetManager.dropTabSet(tab_set);
+  self.save();
+}
+
+SessionManager.prototype.renameTabSet = function(tab_set, name) {
+  var self = this;
+  tab_set.set({"name": name});
+  self.save();
+}
+
+SessionManager.prototype.importTabSets = function(tab_sets) {
+  var self  = this;
+  _.each(tab_sets, function(tab_set) {
+    self.tabSetManager.load(tab_set);
+  });
+}
+
+var session = new SessionManager();
