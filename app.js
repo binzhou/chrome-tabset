@@ -1,5 +1,7 @@
-var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function($tooltipProvider) {
+var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function($tooltipProvider, $compileProvider, $locationProvider) {
+  $compileProvider.urlSanitizationWhitelist(/^\s*(https?|ftp|mailto|blob):/);
   $tooltipProvider.options({ 'appendToBody': true });
+  $locationProvider.html5Mode(true).hashPrefix('!');
 })
   .filter('default', function() {
     return function(input, value) {
@@ -20,12 +22,86 @@ var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function(
       });
     };
   })
+  .directive('activeLink', ['$location', function($location) {
+    return {
+      restrict: 'A',
+      link: function(scope, element, attrs) {
+        var clazz = attrs.activeLink;
+        var path = attrs.href;
+        var isDefault = attrs.activeDefault !== void 0;
+        var target = attrs.activeTarget || "self";
+        if (target == "parent") {
+          element = element.parent();
+        }
+        path = path.substring(1);
+        scope.$watch(function() { return $location.hash(); }, function(newPath) {
+          if (path === newPath || (!newPath && isDefault)) {
+            element.addClass(clazz);
+          } else {
+            element.removeClass(clazz);
+          }
+        });
+      }
+    };
+  }])
+  .directive('activeId', ['$location', function($location) {
+    return {
+      restrict: 'A',
+      link: function(scope, element, attrs) {
+        var clazz = attrs.activeId;
+        var path = attrs.id;
+        var isDefault = attrs.activeDefault !== void 0;
+        scope.$watch(function() { return $location.hash(); }, function(newPath) {
+          if (path === newPath || (!newPath && isDefault)) {
+            element.addClass(clazz);
+          } else {
+            element.removeClass(clazz);
+          }
+        });
+      }
+    };
+  }])
+  .directive('fileInput', function() {
+    return {
+      restrict: 'A',
+      require: '?ngModel',
+      link: function(scope, element, attr, ngModel) {
+        element.bind('change', function() {
+          scope.$apply(function() {
+            var files = element[0].files,
+                isValid = true;
+
+            if (attr.accept) {
+              var i, j, acceptType, fileType,
+                  types = attr.accept.split(',').map(function(t) { return t.split('/'); });
+              for (i = 0; i < files.length && isValid; ++i) {
+                fileType = files[i].type.split('/');
+                isValid = false;
+                for (j = 0; j < types.length && !isValid; ++j) {
+                  acceptType = types[j];
+                  isValid = acceptType[0] === fileType[0] && (acceptType[1] === '*' || acceptType[1] === fileType[1]);
+                }
+              }
+            }
+            ngModel.$setValidity('file', isValid);
+
+            var viewValue;
+            if (isValid) viewValue = attr.multiple ? files : files[0];
+            ngModel.$setViewValue(viewValue);
+          });
+        });
+      }
+    }
+  })
   .factory('session', function() {
     return chrome.extension.getBackgroundPage().session;
   })
   .controller('ExportDialogController', ['$scope', 'dialog', 'model', function($scope, dialog, model){
     $scope.title = model.title;
     $scope.obj = model.obj;
+    $scope.blob = new Blob([angular.toJson(model.obj)], {type:'application/json'});
+    $scope.dl_link = webkitURL.createObjectURL($scope.blob);
+    $scope.fname = model.fname;
     $scope.close = function(){
       dialog.close();
     };
@@ -35,6 +111,28 @@ var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function(
     $scope.json = '';
     $scope.cancel_btn = model.cancel;
     $scope.import_btn = model.import;
+    $scope.invalid_file = false;
+    $scope.from_files = function(files) {
+      if (files.length > 0) {
+        $scoe.invalid_file = true;
+        $scope.file = files[0];
+        var reader = new FileReader();
+        reader.readAsText($scope.file);
+        reader.onload = function() {
+          try {
+            var json = angular.toJson(angular.fromJson(reader.result));
+          } catch(err) {
+            return;
+          }
+          $scope.$apply(function(scope) {
+            scope.json = json;
+            scope.invalid_file = false;
+          });
+        }
+      } else {
+        scope.invalid_file = false;
+      }
+    };
     $scope.cancel = function() {
       dialog.close();
     }
@@ -54,7 +152,7 @@ var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function(
           'templateUrl': templateUrl,
           'controller': 'ExportDialogController',
           'resolve': {
-            'model': function() { return { 'title': opts.title, 'obj': opts.obj }; }
+            'model': function() { return { 'title': opts.title, 'obj': opts.obj, 'fname': opts.fname }; }
           }
         })
       },

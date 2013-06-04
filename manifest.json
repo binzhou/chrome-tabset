@@ -12,6 +12,7 @@
   "background": {
     "scripts": [
       "lib/uuid.min.js",
+      "lib/asevented.min.js",
       "lib/angular/angular.min.js",
       "lib/underscore/underscore.min.js",
       "backgroundPage.js"
@@ -24,5 +25,6 @@
     },
     "default_title": "No active TabSet",
     "default_popup": "browser_action/popup.html"
-  }
+  },
+  "options_page": "options/options.html"
 }

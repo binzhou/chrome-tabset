@@ -4,12 +4,18 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
   $scope.showDetails = false;
   $scope.activeTabSet = null;
 
+  $scope.launchOptions = function(subsection) {
+    chrome.tabs.create({
+      url: "options/options.html"
+    });
+  };
+
   var updateTabSet = function(tab_set) {
     $scope.$apply(function(scope) {
       scope.activeTabSet = tab_set;
       scope.showDetails = tab_set != null;
     });
-  }
+  };
 
   chrome.windows.getCurrent({}, function(w){
     session.updateBrowserAction(w.id);
@@ -37,7 +43,7 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
   $scope.dropTabSet = function(tab_set) {
     var msgbox = simpleDialog.confirm("confirmDialog.html", {
       "title": "Delete Tabset",
-      "body": "Are you sure you wantto delete '" + tab_set.name + "'?",
+      "body": "Are you sure you want to delete '" + tab_set.name + "'? This action cannot be undone.",
       "accept": "Yes",
       "cancel": "No"
     });
@@ -45,16 +51,40 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
     msgbox.open().then(function(accepted) {
       if (accepted) {
         session.dropTabSet(tab_set);
-        chrome.windows.getCurrent({'populate':false}, function(w) {
-          session.updateBrowserAction(w.id);
-          updateTabSet(null);
-        });
+        if ($scope.activeTabSet == tab_set) {
+          chrome.windows.getCurrent({'populate':false}, function(w) {
+            session.updateBrowserAction(w.id);
+            updateTabSet(null);
+          });
+        }
+      }
+    });
+  };
+
+  $scope.dropAllTabSets = function() {
+    var msgbox = simpleDialog.confirm("confirmDialog.html", {
+      "title": "Delete All Tabsets",
+      "body": "Are you sure you want to delete ALL tabsets? This action cannot be undone.",
+      "accept": "Yes",
+      "cancel": "No"
+    });
+
+    msgbox.open().then(function(accepted) {
+      if (accepted) {
+        session.dropAllTabSets();
+        if ($scope.activeTabSet) {
+          chrome.windows.getCurrent({'populate':false}, function(w) {
+            session.updateBrowserAction(w.id);
+            updateTabSet(null);
+          });
+        }
       }
     });
   };
 
   $scope.exportTabSet = function(tab_set) {
     var dialog = jsonDialog.export("exportDialog.html", {
+      "fname": "export-tabset-"+ (tab_set.name || "untitled") +".json",
       "title": "Export " + (tab_set.name || "(untitled)"),
       "obj": [ tab_set.toObj() ]
     });
@@ -63,8 +93,9 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
 
   $scope.exportAllTabSets = function() {
     var dialog = jsonDialog.export("exportDialog.html", {
+      "fname": "export-all-tabsets.json",
       "title": "Export All TabSets (" + $scope.session.allTabSets.length + ")",
-      "obj": $scope.session.allTabSets
+      "obj": $scope.session.tabSetManager.toObj()
     });
     dialog.open();
   };
@@ -91,6 +122,11 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
     dialog.open().then(function(name) {
       if (name) {
         session.renameTabSet(tab_set, name);
+        if ($scope.activeTabSet == tab_set) {
+          chrome.windows.getCurrent({'populate':false}, function(w) {
+            session.updateBrowserAction(w.id);
+          });
+        }
       }
     });
   };
@@ -138,5 +174,21 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
 
   $scope.dropTabSetEntry = function(entry) {
     session.dropTabSetEntry($scope.activeTabSet, entry);
-  }
+  };
+
+  $scope.dropAllTabSetEntries = function(tab_set) {
+    var msgbox = simpleDialog.confirm("confirmDialog.html", {
+      "title": "Clear Current Tabset (" + tab_set.name + ")",
+      "body": "Are you sure you want to remove ALL entries from '" + tab_set.name + "'? This action cannot be undone and will close this browser window.",
+      "accept": "Yes",
+      "cancel": "No"
+    });
+
+    msgbox.open().then(function(accepted) {
+      if (accepted) {
+        session.dropAllTabSetEntries(tab_set);
+      }
+    });
+  };
+
 }

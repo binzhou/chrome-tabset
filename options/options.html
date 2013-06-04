@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" data-ng-app="TabSetApp" data-ng-csp>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <link rel="stylesheet" type="text/css" href="../lib/chrome-bootstrap/chrome-bootstrap.css">
+  <link rel="stylesheet" type="text/css" href="../lib/fontawesome/css/font-awesome.min.css">
+  <script type="text/javascript" src="../lib/underscore/underscore.min.js"></script>
+  <script type="text/javascript" src="../lib/jquery/jquery.min.js"></script>
+  <script type="text/javascript" src="../lib/angular/angular.min.js"></script>
+  <script type="text/javascript" src="../lib/angular/ui-bootstrap.min.js"></script>
+  <script type="text/javascript" src="../lib/angular/ui-if.js"></script>
+  <script type="text/javascript" src="../app.js"></script>
+  <script type="text/javascript" src="controller.js"></script>
+  <style>
+    textarea {
+      border: 1px solid #BFBFBF;
+      border-radius: 2px;
+      box-sizing: border-box;
+      color: #444;
+      font: inherit;
+      margin: 0;
+      min-height: 2em;
+      padding: 3px;
+      padding-bottom: 4px;
+    }
+    textarea:focus {
+      -webkit-transition: border-color 200ms;
+      border-color: #4d90fe;
+      outline: none;
+    }
+    textarea.invalid {
+      -webkit-transition: border-color 100ms;
+      border-color: #dc604d;
+      outline: none;
+    }
+
+    pre {
+      display: block;
+      padding: 3px;
+      padding-bottom: 4px;
+      font: inherit;
+      margin: 0;
+      word-break: break-all;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      background-color: #f5f5f5;
+      border: 1px solid #BFBFBF;
+      border-radius: 2px;
+      box-sizing: border-box;
+    }
+
+    ul.hlist li {
+      float: left;
+      margin-right: 10px;
+      list-style: square inside none;
+    }
+
+    .btn {
+      -webkit-align-items: flex-start;
+      padding: 3px 10px 0px;
+      vertical-align: 2px;
+      display: inline-block;
+      text-align: center;
+      text-indent: 0px;
+      word-spacing: 0px;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      -webkit-user-select: none;
+      background-image: -webkit-linear-gradient(#ededed, #ededed 38%, #dedede);
+      border: 1px solid rgba(0, 0, 0, 0.25);
+      border-radius: 2px;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.75);
+      color: #444;
+      font: inherit;
+      margin: 0 1px 0 0;
+      text-shadow: 0 1px 0 #F0F0F0;
+      -webkit-padding-end: 10px;
+      -webkit-padding-start: 10px;
+      min-height: 2em;
+      min-width: 4em;
+      text-decoration: none;
+    }
+    .btn.small {
+      padding: 1px 5px 2px;
+      min-height: 1em;
+    }
+    .btn:focus {
+      -webkit-transition: border-color 200ms;
+      border-color: #4d90fe;
+      outline: none;
+    }
+    .btn.disabled {
+      background-image: -webkit-linear-gradient(#f1f1f1, #f1f1f1 38%, #e6e6e6);
+      border-color: rgba(80, 80, 80, 0.2);
+      box-shadow: 0 1px 0 rgba(80, 80, 80, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.75);
+      color: #aaa;
+    }
+    .btn:hover:not(.disabled) {
+      background-image: -webkit-linear-gradient(#f0f0f0, #f0f0f0 38%, #e0e0e0);
+      border-color: rgba(0, 0, 0, 0.3);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.95);
+      color: black;
+      text-decoration: none;
+    }
+    .btn:active:not(.disabled) {
+      background-image: -webkit-linear-gradient(#e7e7e7, #e7e7e7 38%, #d7d7d7);
+      box-shadow: none;
+      text-shadow: none;
+    }
+  </style>
+</head>
+<body class="frame">
+  <div class="navigation">
+    <h1><a href="#">TabSet</a></h1>
+    <ul class="menu">
+      <li>
+        <a data-active-link="selected" data-active-target="parent" data-active-default href="#tabsets">Browse</a>
+      </li>
+    </ul>
+    <ul class="menu">
+      <li>
+        <a data-active-link="selected" data-active-target="parent" href="#import">Import</a>
+      </li>
+      <li>
+        <a data-active-link="selected" data-active-target="parent" href="#tools">Tools</a>
+      </li>
+    </ul>
+  </div>
+  <div class="mainview view">
+    <div id="tabsets" data-active-id="selected" data-active-default data-ng-controller="TabSetsController">
+      <header>
+        <h1>Browser Tabsets</h1>
+      </header>
+      <div class="content">
+        <ul class="highlightable editable">
+          <li data-ng-repeat="tab_set in session.allTabSets">
+            <a>
+            <dl>
+              <dt>{{ tab_set.name }}</dt>
+              <dd>
+                <ul class="hlist">
+                  <li>Tabs (opened/total): {{ (tab_set.entries|filter:{isOpen:true}).length }} / {{ tab_set.entries.length }}</li>
+                  <li>Last Opened: {{ tab_set.lastOpened.toLocaleString() }}</li>
+                  <li>Last Closed: {{ tab_set.lastClosed.toLocaleString() }}</li>
+                  <li>Created: {{ tab_set.created.toLocaleString() }}</li>
+                </ul>
+              </dd>
+            </dl>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div id="import" data-active-id="selected" data-ng-controller="ImportController">
+      <header>
+        <h1>Import Tabsets</h1>
+      </header>
+      <div class="content">
+        <form name="importForm">
+          <p>Choose a file or paste exported json into the textarea.</p>
+          <p><input data-file-input data-ng-model="file" type="file"></p>
+          <textarea rows="24" style="width: 700px;" data-ng-model="json" data-ng-class="{invalid: jsonInvalid}"></textarea>
+          <div class="button-strip">
+            <button data-ng-click="reset()">Clear</button>
+            <button type="submit" data-ng-disabled="jsonInvalid || !json" data-ng-click="importJson()">Import</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="tools" data-active-id="selected" data-ng-controller="ToolsController">
+      <header>
+        <h1>Tools</h1>
+      </header>
+      <div class="content">
+        <section>
+          <h3>Data</h3>
+          <div class="button-strip">
+            <button data-ng-click="importData()">Import</button>
+            <button data-ng-click="exportData()">Export All</button>
+            <button data-ng-click="clearData()">Clear All</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/ng-template" id="confirmDialog.html">
+    <div class="overlay">
+      <div class="page">
+        <h1>{{ title }}</h1>
+        <div class="content-area">
+          {{ body }}
+        </div>
+        <div class="action-area">
+          <div class="action-area-right">
+            <div class="button-strip">
+              <button class="btn" data-ng-click="cancel()">{{ cancel_btn | default:'Cancel' }}</button>
+              <button class="btn btn-primary" data-ng-click="accept()"> {{ accept_btn | default:'Accept' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="exportDialog.html">
+    <div class="overlay">
+      <div class="page">
+        <h1>{{ title | default:'Export' }}</h1>
+        <div class="content-area">
+          <pre data-auto-select style="max-width:600px; max-height:300px; overflow-y:auto;">{{ obj | json }}</pre>
+        </div>
+        <div class="action-area">
+          <div class="action-area-right">
+            <div class="button-strip">
+              <a class="btn" download="{{ fname }}" data-ng-href="{{ dl_link }}" data-ng-click="close()">Download</a>
+              <a class="btn" data-ng-click="close()">Done</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </script>
+</body>

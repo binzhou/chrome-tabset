@@ -142,9 +142,10 @@ TabSetManager.prototype.load = function(obj) {
   try {
     var tab_set = TabSet.fromObj(obj);
   } catch(err) {
-    return;
+    return false;
   }
   self.tabSets.push(tab_set);
+  return true;
 }
 
 TabSetManager.prototype.toObj = function() {
@@ -300,7 +301,8 @@ var SessionManager = function(cb) {
 
   self.save = _.throttle(function() {
     self.tabSetManager.save();
-  }, 10000);
+    this.trigger("changed");
+  }, 2000);
 
   self.tabSetManager = new TabSetManager(function(tsm) {
     self.allTabSets = tsm.tabSets;
@@ -395,6 +397,8 @@ var SessionManager = function(cb) {
     }
   })
 }
+
+asEvented.call(SessionManager.prototype);
 
 SessionManager.prototype.isTrackableUrl = function(u) {
   return /^https?:\/\//.test(u);
@@ -566,6 +570,33 @@ SessionManager.prototype.dropTabSetEntry = function(tab_set, entry , cb) {
   }
 }
 
+SessionManager.prototype.dropAllTabSetEntries = function(tab_set, cb) {
+  var self = this;
+
+  var s_window = self.openTabSets[tab_set.id];
+
+  _.each(tab_set.entries.slice(), function(entry) {
+    tab_set.dropEntry(entry);
+    if (!_.isUndefined(s_window)) {
+      var s_tab = s_window.openEntries[entry.id];
+      if (!_.isUndefined(s_tab)) {
+        s_window.closeTab(s_tab.id);
+      }
+    }
+  });
+
+  self.save();
+
+  if (!_.isUndefined(s_window)) {
+    chrome.windows.remove(s_window.id, cb);
+    return;
+  }
+
+  if (!_.isUndefined(cb)) {
+    cb();
+  }
+}
+
 SessionManager.prototype.dropTabSet = function(tab_set) {
   var self = this;
   var s_window = self.openTabSets[tab_set.id];
@@ -578,6 +609,14 @@ SessionManager.prototype.dropTabSet = function(tab_set) {
   self.save();
 }
 
+SessionManager.prototype.dropAllTabSets = function() {
+  var self = this;
+  _.each(self.allTabSets.slice(), function(tab_set) {
+    self.dropTabSet(tab_set);
+  });
+  self.save();
+}
+
 SessionManager.prototype.renameTabSet = function(tab_set, name) {
   var self = this;
   tab_set.set({"name": name});
@@ -586,9 +625,14 @@ SessionManager.prototype.renameTabSet = function(tab_set, name) {
 
 SessionManager.prototype.importTabSets = function(tab_sets) {
   var self  = this;
+  var count = 0;
   _.each(tab_sets, function(tab_set) {
-    self.tabSetManager.load(tab_set);
+    if (self.tabSetManager.load(tab_set)) {
+      count += 1;
+    }
   });
+  self.save();
+  return count;
 }
 
 var session = new SessionManager();
