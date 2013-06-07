@@ -1,6 +1,5 @@
-function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDialog) {
+function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDialog, safeApply) {
   $scope.session = session;
-  $scope.ready = false;
   $scope.showDetails = false;
   $scope.activeTabSet = null;
 
@@ -11,18 +10,14 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
   };
 
   var updateTabSet = function(tab_set) {
-    $scope.$apply(function(scope) {
+    safeApply($scope, function(scope) {
       scope.activeTabSet = tab_set;
       scope.showDetails = tab_set != null;
     });
   };
 
-  chrome.windows.getCurrent({}, function(w){
-    session.updateBrowserAction(w.id);
+  chrome.windows.getCurrent({}, function(w) {
     updateTabSet(session.tabSetForWindow(w.id));
-    $scope.$apply(function(scope) {
-      scope.ready = true;
-    });
   });
 
   $scope.entryFilter = function(filter) {
@@ -34,7 +29,6 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
   $scope.createTabSet = function(name) {
     chrome.windows.getCurrent({'populate':true}, function(w) {
       session.createTabSet(w, {'name': name}, function(tab_set) {
-        session.updateBrowserAction(w.id);
         updateTabSet(tab_set);
       });
     });
@@ -53,7 +47,6 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
         session.dropTabSet(tab_set);
         if ($scope.activeTabSet == tab_set) {
           chrome.windows.getCurrent({'populate':false}, function(w) {
-            session.updateBrowserAction(w.id);
             updateTabSet(null);
           });
         }
@@ -74,7 +67,6 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
         session.dropAllTabSets();
         if ($scope.activeTabSet) {
           chrome.windows.getCurrent({'populate':false}, function(w) {
-            session.updateBrowserAction(w.id);
             updateTabSet(null);
           });
         }
@@ -122,11 +114,6 @@ function BrowserActionController($dialog, $scope, session, jsonDialog, simpleDia
     dialog.open().then(function(name) {
       if (name) {
         session.renameTabSet(tab_set, name);
-        if ($scope.activeTabSet == tab_set) {
-          chrome.windows.getCurrent({'populate':false}, function(w) {
-            session.updateBrowserAction(w.id);
-          });
-        }
       }
     });
   };

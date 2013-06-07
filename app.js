@@ -1,24 +1,159 @@
-var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function($tooltipProvider, $compileProvider, $locationProvider) {
-  $compileProvider.urlSanitizationWhitelist(/^\s*(https?|ftp|mailto|blob):/);
-  $tooltipProvider.options({ 'appendToBody': true });
-  $locationProvider.html5Mode(true).hashPrefix('!');
-})
+angular.module('tabsetapp.services', [])
+  .factory('safeApply', function() {
+    return function($scope, fn) {
+        var phase = $scope.$root.$$phase;
+        if(phase == '$apply' || phase == '$digest') {
+            if (fn) {
+                $scope.$eval(fn);
+            }
+        } else {
+            if (fn) {
+                $scope.$apply(fn);
+            } else {
+                $scope.$apply();
+            }
+        }
+    }
+  })
+  .factory('session', function() {
+    return chrome.extension.getBackgroundPage().session;
+  })
+  .factory('fuzzy', function() {
+    var fuzzy = {};
+    fuzzy.parse = function(query) {
+      var terms = query.toLowerCase().replace(/\s+/g, ' ').split(' ');
+      return terms;
+      return terms.filter(function(term) { term !== ''; });
+    };
+
+    fuzzy.matches = function(query, text) {
+      var terms = fuzzy.parse(query);
+      return fuzzy._matches(terms, ext.toLowerCase());
+    }
+    fuzzy._matches = function(terms, text) {
+      var start = 0;
+      var pos = [];
+      for (var i in terms) {
+        var term = terms[i];
+        var skipto = text.indexOf(term);
+        if (skipto < 0) {
+          break;
+        }
+
+        text = text.substring(skipto + term.length);
+        pos.push(start + skipto);
+        start += skipto + term.length;
+      }
+      return pos;
+    }
+
+    fuzzy.test = function(query, text) {
+      var terms = fuzzy.parse(query);
+      return fuzzy._matches(terms, text.toLowerCase()).length == terms.length;
+    }
+
+    fuzzy.highlight = function(query, text, prefix, suffix) {
+      var terms = fuzzy.parse(query);
+      var matches = fuzzy._matches(terms, text.toLowerCase())
+      var out = '';
+      var upto = 0;
+      for (var i in matches) {
+        var match_start = matches[i];
+        var match_end = match_start + terms[i].length;
+        out += text.substring(upto, match_start);
+        out += prefix;
+        out += text.substring(match_start, match_end);
+        out += suffix;
+        upto = match_end;
+      }
+      out += text.substring(upto, text.length);
+      return out;
+    }
+    return fuzzy;
+  });
+
+angular.module('tabsetapp.filters', ['tabsetapp.services', 'ngSanitize'])
   .filter('default', function() {
     return function(input, value) {
       return input != null && input != undefined && input != "" ? input : value || '';
     }
   })
   .filter('favicon', function() {
-    return function(input, value) {
+    return function(input) {
       return 'chrome://favicon/' + input;
     }
   })
+  .filter('fuzzy_highlight', ['fuzzy', function(fuzzy) {
+    return function(input, query) {
+      return fuzzy.highlight(query, input, "<span class='highlight'>", "</span>");
+    }
+  }]);
+
+angular.module('tabsetapp.directives.forms', ['tabsetapp.services'])
+  .directive('textFileInput', ['safeApply', function(safeApply) {
+    return {
+      restrict: 'A',
+      require: 'ngModel',
+      link: function(scope, element, attr, ctrl) {
+        var set_value = function() {
+          var files = element[0].files;
+          if (files.length == 0) {
+            safeApply(scope, function() {
+              ctrl.$setValidity('file', true);
+            });
+          }
+          var reader = new FileReader();
+          reader.readAsText(files[0]);
+          reader.onload = function() {
+            safeApply(scope, function(scope) {
+              ctrl.$setValidity('file', true);
+              ctrl.$setViewValue(reader.result);
+            });
+          };
+          reader.onerror = function() {
+            safeApply(scope, function(scope) {
+              ctrl.$setValidity('file', false);
+            });
+          };
+        };
+        element.bind('change', set_value);
+        set_value();
+        ctrl.$render = function() {
+          element.val(null);
+        };
+      }
+    }
+  }])
+  .directive('json', function() {
+    return {
+      restrict: 'A',
+      require: 'ngModel',
+      link: function(scope, element, attr, ctrl) {
+        var mustbe = attr.json;
+        ctrl.$parsers.unshift(function(viewValue) {
+          try {
+            var json = angular.fromJson(viewValue);
+          } catch(err) {
+            ctrl.$setValidity('json', false);
+            return;
+          }
+          ctrl.$setValidity('json', true);
+          if (mustbe) {
+            var jsonType = Object.prototype.toString.call(json).match(/^\[object\s(.*)\]$/)[1];
+            ctrl.$setValidity('json_type', jsonType.toLowerCase() === mustbe.toLowerCase());
+          }
+        });
+      }
+    }
+  });
+
+angular.module('tabsetapp.directives', ['tabsetapp.directives.forms'])
   .directive('autoSelect', function () {
     return function (scope, element, attrs) {
       var el = element[0];
-      element.click(function () {
+      element.bind('click', function () {
         var selection = el.ownerDocument.defaultView.getSelection();
-            selection.setBaseAndExtent( el, 0, el, 1 );
+        selection.setBaseAndExtent(el, 0, el, 1);
       });
     };
   })
@@ -60,42 +195,9 @@ var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function(
         });
       }
     };
-  }])
-  .directive('fileInput', function() {
-    return {
-      restrict: 'A',
-      require: '?ngModel',
-      link: function(scope, element, attr, ngModel) {
-        element.bind('change', function() {
-          scope.$apply(function() {
-            var files = element[0].files,
-                isValid = true;
+  }]);
 
-            if (attr.accept) {
-              var i, j, acceptType, fileType,
-                  types = attr.accept.split(',').map(function(t) { return t.split('/'); });
-              for (i = 0; i < files.length && isValid; ++i) {
-                fileType = files[i].type.split('/');
-                isValid = false;
-                for (j = 0; j < types.length && !isValid; ++j) {
-                  acceptType = types[j];
-                  isValid = acceptType[0] === fileType[0] && (acceptType[1] === '*' || acceptType[1] === fileType[1]);
-                }
-              }
-            }
-            ngModel.$setValidity('file', isValid);
-
-            var viewValue;
-            if (isValid) viewValue = attr.multiple ? files : files[0];
-            ngModel.$setViewValue(viewValue);
-          });
-        });
-      }
-    }
-  })
-  .factory('session', function() {
-    return chrome.extension.getBackgroundPage().session;
-  })
+angular.module('tabsetapp.ui.dialog.json', ['ui.bootstrap'])
   .controller('ExportDialogController', ['$scope', 'dialog', 'model', function($scope, dialog, model){
     $scope.title = model.title;
     $scope.obj = model.obj;
@@ -170,7 +272,9 @@ var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function(
         })
       }
     };
-  }])
+  }]);
+
+angular.module('tabsetapp.ui.dialog.simple', ['ui.bootstrap'])
   .controller('ConfirmDialogController', ['$scope', 'dialog', 'model', function($scope, dialog, model){
     $scope.title = model.title;
     $scope.body = model.body;
@@ -255,4 +359,17 @@ var TabSetApp = angular.module('TabSetApp', ['ui.bootstrap', 'ui.if'], function(
         });
       }
     };
+  }]);
+
+angular.module('tabsetapp.ui', ['tabsetapp.ui.dialog.simple', 'tabsetapp.ui.dialog.json', 'ui.bootstrap']);
+
+var TabSetApp = angular.module('TabSetApp', ['tabsetapp.services', 'tabsetapp.filters', 'tabsetapp.directives', 'tabsetapp.ui'])
+  .config(['$compileProvider', function($compileProvider) {
+    $compileProvider.urlSanitizationWhitelist(/^\s*(https?|ftp|mailto|blob):/);
+  }])
+  .config(['$tooltipProvider', function($tooltipProvider) {
+    $tooltipProvider.options({ 'appendToBody': true });
+  }])
+  .config(['$locationProvider', function($locationProvider) {
+    $locationProvider.html5Mode(true).hashPrefix('!');
   }]);

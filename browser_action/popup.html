@@ -6,8 +6,8 @@
   <link rel="stylesheet" type="text/css" href="../lib/fontawesome/css/font-awesome.min.css">
   <script type="text/javascript" src="../lib/underscore/underscore.min.js"></script>
   <script type="text/javascript" src="../lib/angular/angular.min.js"></script>
+  <script type="text/javascript" src="../lib/angular/angular-sanitize.min.js"></script>
   <script type="text/javascript" src="../lib/angular/ui-bootstrap.min.js"></script>
-  <script type="text/javascript" src="../lib/angular/ui-if.js"></script>
   <script type="text/javascript" src="../app.js"></script>
   <script type="text/javascript" src="controller.js"></script>
 
@@ -89,9 +89,9 @@
 </head>
 <body data-ng-controller="BrowserActionController">
   <button class="close" data-ng-click="launchOptions()"><i class="icon-cogs"></i></button>
-  <div autofocus id="main" data-ng-show="ready">
+  <div autofocus id="main" data-ng-cloak>
   <tabs>
-    <pane data-ui-if="activeTabSet" data-heading="{{ activeTabSet.name }}" data-active="showDetails">
+    <pane data-ng-if="activeTabSet" data-heading="{{ activeTabSet.name }}" data-active="showDetails">
       <div class="btn-toolbar">
         <div class="btn-group" data-ng-init="activeFilter = 'all'">
           <button class="btn" data-ng-model="activeFilter" data-btn-radio="'open'">Opened</button>

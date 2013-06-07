@@ -304,6 +304,12 @@ var SessionManager = function(cb) {
     this.trigger("changed");
   }, 2000);
 
+  self.refresh = _.throttle(function() {
+    chrome.windows.getLastFocused({'populate':false}, function(w) {
+      self.updateUi(w.id);
+    });
+  }, 500);
+
   self.tabSetManager = new TabSetManager(function(tsm) {
     self.allTabSets = tsm.tabSets;
 
@@ -318,7 +324,7 @@ var SessionManager = function(cb) {
     });
 
     chrome.windows.onFocusChanged.addListener(function(wid) {
-      self.updateBrowserAction(wid);
+      self.refresh();
     });
 
     chrome.tabs.onCreated.addListener(function(t) {
@@ -404,7 +410,7 @@ SessionManager.prototype.isTrackableUrl = function(u) {
   return /^https?:\/\//.test(u);
 }
 
-SessionManager.prototype.updateBrowserAction = function(wid){
+SessionManager.prototype.updateUi = function(wid){
   var s_window = this.trackedWindows[wid];
   if (!_.isUndefined(s_window)) {
     chrome.browserAction.setTitle({
@@ -452,6 +458,7 @@ SessionManager.prototype.createTabSet = function(w, args, cb) {
   self.openTabSets[tab_set.id] = s_window;
 
   self.save();
+  self.refresh();
   if (!_.isUndefined(cb)) {
     cb(tab_set);
   }
@@ -490,6 +497,7 @@ SessionManager.prototype.launchTabSet = function(tab_set, cb) {
     self.openTabSets[tab_set.id] = s_window;
 
     self.save();
+    self.refresh();
     if (!_.isUndefined(cb)) {
       cb(w);
     }
@@ -528,6 +536,7 @@ SessionManager.prototype.launchTabSetEntry = function(tab_set, entry, cb) {
   }
 
   chrome.tabs.create({
+    'windowId': s_window.id,
     'index': insert_idx,
     'active': false
   }, function(t) {
@@ -607,6 +616,7 @@ SessionManager.prototype.dropTabSet = function(tab_set) {
 
   self.tabSetManager.dropTabSet(tab_set);
   self.save();
+  self.refresh();
 }
 
 SessionManager.prototype.dropAllTabSets = function() {
@@ -615,12 +625,14 @@ SessionManager.prototype.dropAllTabSets = function() {
     self.dropTabSet(tab_set);
   });
   self.save();
+  self.refresh();
 }
 
 SessionManager.prototype.renameTabSet = function(tab_set, name) {
   var self = this;
   tab_set.set({"name": name});
   self.save();
+  self.refresh();
 }
 
 SessionManager.prototype.importTabSets = function(tab_sets) {

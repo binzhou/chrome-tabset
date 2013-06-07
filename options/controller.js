@@ -1,56 +1,113 @@
-function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog) {
+function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog, safeApply, fuzzy) {
   $scope.session = session;
+  $scope.query = '';
 
   var onUpdate = function() {
-    try {
-      $scope.$digest();
-    } catch(err) {
-      return;
-    }
+    safeApply($scope);
   };
 
   session.on("changed", onUpdate);
   $scope.$on("$destroy", function () {
     session.off("changed", onUpdate)
   });
+
+  $scope.fuzzyTabSet = function(tab_set) {
+    if (fuzzy.test($scope.query, tab_set.name)) {
+      return true;
+    }
+    for (var i in tab_set.entries) {
+      var entry = tab_set.entries[i];
+      if ($scope.fuzzyEntry(entry)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  $scope.fuzzyEntry = function(entry) {
+    return fuzzy.test($scope.query, entry.title) || fuzzy.test($scope.query, entry.url);
+  }
+
+  $scope.dropTabSet = function(tab_set) {
+    var msgbox = simpleDialog.confirm("confirmDialog.html", {
+      "title": "Delete Tabset",
+      "body": "Are you sure you want to delete '" + tab_set.name + "'? This action cannot be undone.",
+      "accept": "Yes",
+      "cancel": "No"
+    });
+
+    msgbox.open().then(function(accepted) {
+      if (accepted) {
+        session.dropTabSet(tab_set);
+      }
+    });
+  };
+
+  $scope.dropTabSetEntry = function(tab_set, entry) {
+    session.dropTabSetEntry(tab_set, entry);
+  };
+
+  $scope.exportTabSet = function(tab_set) {
+    var dialog = jsonDialog.export("exportDialog.html", {
+      "fname": "export-tabset-"+ (tab_set.name || "untitled") +".json",
+      "title": "Export " + (tab_set.name || "(untitled)"),
+      "obj": [ tab_set.toObj() ]
+    });
+    dialog.open();
+  };
+
+  $scope.renameTabSet = function(tab_set) {
+    var dialog = simpleDialog.input("inputDialog.html", {
+      'title': "Rename '" + tab_set.name + "'",
+      'placeholder': "New Name",
+      'default': tab_set.name,
+      'accept': "Rename"
+    });
+    dialog.open().then(function(name) {
+      if (name) {
+        session.renameTabSet(tab_set, name);
+      }
+    });
+  };
+
+  $scope.launchTabSet = function(tab_set) {
+    session.launchTabSet(tab_set);
+  };
+
+  $scope.launchEntry = function(tab_set, entry) {
+    if (session.openTabSets[tab_set.id] === void 0) {
+      var msgbox = simpleDialog.confirm("confirmDialog.html", {
+        "title": "Launch Entry",
+        "body": "Do you wish to launch the entire TabSet?",
+        "accept": "Launch TabSet",
+        "cancel": "Launch as new tab"
+      });
+      msgbox.open().then(function(accepted) {
+        if (accepted) {
+          if (session.openTabSets[tab_set.id] === void 0) {
+            session.launchTabSet(tab_set, function(w) {
+              $scope.launchEntry(tab_set, entry);
+            });
+          } else {
+            $scope.launchEntry(tab_set, entry);
+          }
+        } else {
+          chrome.tabs.create({
+            'url': entry.url,
+            'active': true
+          });
+        }
+      });
+    }
+    session.launchTabSetEntry(tab_set, entry);
+  };
 }
 
 function ImportController($scope, $location, simpleDialog, session) {
   $scope.json = "";
-  $scope.jsonInvalid = false;
-
-  $scope.$watch("file", function(file) {
-    var reader = new FileReader();
-        reader.readAsText(file);
-    reader.onload = function() {
-      $scope.$apply(function($scope) {
-        try {
-          var json = angular.toJson(angular.fromJson(reader.result));
-        } catch(err) {
-          var json = "Invalid file."
-        }
-        $scope.json = json;
-      });
-    }
-  });
-
-  $scope.$watch("json", function(json) {
-    if (!json) {
-      $scope.jsonInvalid = false;
-      return;
-    }
-    try {
-      var obj = angular.fromJson($scope.json);
-    } catch(err) {
-      $scope.jsonInvalid = true;
-      return;
-    }
-    $scope.jsonInvalid = !(obj instanceof Array);
-  });
 
   $scope.reset = function() {
     $scope.json = "";
-    $scope.file = null;
     $scope.importForm.$setPristine();
   }
 
