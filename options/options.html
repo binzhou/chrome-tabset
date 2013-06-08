@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ng-app="TabSetApp" data-ng-csp>
+<html lang="en" data-ng-app="TabSetOptionsApp" data-ng-csp>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <link rel="stylesheet" type="text/css" href="../lib/chrome-bootstrap/chrome-bootstrap.css">
@@ -207,7 +207,6 @@
       background-color: rgba(240, 246, 254, 1.0);
     }
     .highlightable > li:hover > .highlight-area:not(:hover) {
-      /*background-color: rgba(254, 246, 200); yellow*/
       background-color: rgba(240, 246, 254, 0.5);
     }
 
@@ -259,29 +258,47 @@
       text-overflow:ellipsis;
     }
 
+    .view-enter,
+    .view-leave {
+      position:absolute;
+      top: 0;
+    }
+    .view-enter {
+      -webkit-transition-delay: 100ms;
+      -webkit-transition: 200ms all;
+    }
+    .view-leave {
+      -webkit-transition: 100ms all;
+    }
+
+    .view-leave.view-leave-active,
+    .view-enter {
+      -webkit-margin-start: -20px;
+      opacity: 0;
+      z-index: 0;
+    }
+    .view-leave,
+    .view-enter.view-enter-active {
+      -webkit-margin-start: 0;
+      opacity: 1;
+      z-index: 1;
+    }
+
     .list-enter,
     .list-leave,
     .list-move {
       -webkit-transition: 300ms linear all;
       position:relative;
     }
-
+    .list-leave.list-leave-active,
     .list-enter {
       left:-10px;
       opacity:0;
     }
+    .list-leave,
     .list-enter.list-enter-active {
       left:0;
       opacity:1;
-    }
-
-    .list-leave {
-      left:0;
-      opacity:1;
-    }
-    .list-leave.list-leave-active {
-      left:-10px;
-      opacity:0;
     }
 
     .list-move {
@@ -293,105 +310,108 @@
   </style>
 </head>
 <body class="frame" data-ng-cloak>
-  <div class="navigation">
+  <div class="navigation" ng-data-controller="NavigationController">
     <h1><a href="#">TabSet</a></h1>
     <ul class="menu">
       <li>
-        <a data-active-link="selected" data-active-target="parent" data-active-default href="#tabsets">Browse</a>
+        <a data-active-link data-active-target="parent" href="#/browse">Browse</a>
       </li>
     </ul>
     <ul class="menu">
       <li>
-        <a data-active-link="selected" data-active-target="parent" href="#import">Import</a>
+        <a data-active-link data-active-target="parent" href="#/import">Import</a>
       </li>
       <li>
-        <a data-active-link="selected" data-active-target="parent" href="#tools">Tools</a>
+        <a data-active-link data-active-target="parent" href="#/tools">Tools</a>
       </li>
     </ul>
   </div>
-  <div class="mainview view">
-    <div id="tabsets" data-active-id="selected" data-active-default data-ng-controller="TabSetsController">
-      <header>
-        <h1>Browser Tabsets</h1>
-        <div class="corner cancelable">
-          <input type="search" placeholder="Search" data-ng-model="query">
-        </div>
-      </header>
-      <div class="content">
-        <ul class="highlightable">
-          <li data-ng-repeat="tab_set in session.allTabSets | filter:fuzzyTabSet" data-ng-animate="'list'">
-            <div class="highlight-area active" data-ng-click="expanded=!expanded">
-              <dl>
-                <dt class="fit">
+  <div class="view" data-ng-view data-ng-animate="'view'">
+  </div>
+
+  <script type="text/ng-template" id="browse.html">
+    <header>
+      <h1>Browser Tabsets</h1>
+      <div class="corner cancelable">
+        <input type="search" placeholder="Search" data-ng-model="query">
+      </div>
+    </header>
+    <div class="content">
+      <ul class="highlightable">
+        <li data-ng-repeat="tab_set in session.allTabSets | filter:fuzzyTabSet" data-ng-animate="'list'">
+          <div class="highlight-area active" data-ng-click="expanded=!expanded">
+            <dl>
+              <dt class="fit">
                 <span data-ng-bind-html="tab_set.name | fuzzy_highlight:query"></span>
                 <a class="action reveal" data-ng-click="renameTabSet(tab_set); $event.stopPropagation()"><i class="icon-edit"></i></a>
                 <a class="action right reveal delete" data-ng-click="dropTabSet(tab_set); $event.stopPropagation()">Delete</a>
                 <a class="action right badge reveal" data-ng-click="launchTabSet(tab_set); $event.stopPropagation()">Launch</a>
                 <a class="action right badge reveal" data-ng-click="exportTabSet(tab_set); $event.stopPropagation()">Export</a>
-                </dt>
-                <dd>
-                  <ul class="hlist">
-                    <li>Tabs (opened/total): {{ (tab_set.entries | filter:{isOpen:true}).length }} / {{ tab_set.entries.length }}</li>
-                    <li>Last Opened: {{ tab_set.lastOpened.toLocaleString() }}</li>
-                    <li>Last Closed: {{ tab_set.lastClosed.toLocaleString() }}</li>
-                    <li>Created: {{ tab_set.created.toLocaleString() }}</li>
-                  </ul>
-                </dd>
-              </dl>
-            </div>
-            <ul class="scrollbox expandable highlightable" data-ng-class="{'expanded': expanded || query}">
-              <li data-ng-repeat="entry in tab_set.entries | filter:fuzzyEntry" data-ng-animate="'list'">
-                <div class="highlight-area">
-                  <dl>
-                    <dt class="fit" data-ng-class="{'muted': !entry.isOpen}">
-                      <img data-ng-src="{{ entry.url | favicon }}">
-                      <span data-ng-bind-html="entry.title | default:entry.url | fuzzy_highlight:query"></span>
-                      <a class="action right reveal delete" data-ng-click="dropTabSetEntry(tab_set, entry)">Delete</a>
-                      <a class="action right badge reveal" data-ng-click="launchEntry(tab_set, entry)">Launch</a>
-                    </dt>
-                    <dd class="fit">
-                      {{ entry.url }}
-                    </dd>
-                  </dl>
-                </div>
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <div id="import" data-active-id="selected" data-ng-controller="ImportController">
-      <header>
-        <h1>Import Tabsets</h1>
-      </header>
-      <div class="content">
-        <form novalidate name="importForm">
-          <p>Choose a file or paste exported json into the textarea.</p>
-          <p><input data-text-file-input data-ng-model="json" type="file"></p>
-          <textarea data-json="array" rows="24" style="width: 700px;" data-ng-model="json"></textarea>
-          <div class="button-strip">
-            <button data-ng-disabled="!importForm.$dirty" data-ng-click="reset()">Clear</button>
-            <button type="submit" data-ng-disabled="!importForm.$dirty || importForm.$invalid" data-ng-click="importJson()">Import</button>
+              </dt>
+              <dd>
+                <ul class="hlist">
+                  <li>Tabs (opened/total): {{ (tab_set.entries | filter:{isOpen:true}).length }} / {{ tab_set.entries.length }}</li>
+                  <li>Last Opened: {{ tab_set.lastOpened.toLocaleString() }}</li>
+                  <li>Last Closed: {{ tab_set.lastClosed.toLocaleString() }}</li>
+                  <li>Created: {{ tab_set.created.toLocaleString() }}</li>
+                </ul>
+              </dd>
+            </dl>
           </div>
-        </form>
-      </div>
+          <ul class="scrollbox expandable highlightable" data-ng-class="{'expanded': expanded || query}">
+            <li data-ng-repeat="entry in tab_set.entries | filter:fuzzyEntry" data-ng-animate="'list'">
+              <div class="highlight-area">
+                <dl>
+                  <dt class="fit" data-ng-class="{'muted': !entry.isOpen}">
+                    <img data-ng-src="{{ entry.url | favicon }}">
+                    <span data-ng-bind-html="entry.title | default:entry.url | fuzzy_highlight:query"></span>
+                    <a class="action right reveal delete" data-ng-click="dropTabSetEntry(tab_set, entry)">Delete</a>
+                    <a class="action right badge reveal" data-ng-click="launchEntry(tab_set, entry)">Launch</a>
+                  </dt>
+                  <dd class="fit">
+                    {{ entry.url }}
+                  </dd>
+                </dl>
+              </div>
+            </li>
+          </ul>
+        </li>
+      </ul>
     </div>
-    <div id="tools" data-active-id="selected" data-ng-controller="ToolsController">
-      <header>
-        <h1>Tools</h1>
-      </header>
-      <div class="content">
-        <section>
-          <h3>Data</h3>
-          <div class="button-strip">
-            <button class="button" data-ng-click="importData()">Import</button>
-            <button data-ng-click="exportData()">Export All</button>
-            <button data-ng-click="clearData()">Clear All</button>
-          </div>
-        </section>
-      </div>
+  </script>
+
+  <script type="text/ng-template" id="import.html">
+    <header>
+      <h1>Import Tabsets</h1>
+    </header>
+    <div class="content">
+      <form novalidate name="importForm">
+        <p>Choose a file or paste exported json into the textarea.</p>
+        <p><input data-text-file-input data-ng-model="json" type="file"></p>
+        <textarea data-json="array" rows="24" style="width: 700px;" data-ng-model="json"></textarea>
+        <div class="button-strip">
+          <button data-ng-disabled="!importForm.$dirty" data-ng-click="reset()">Clear</button>
+          <button type="submit" data-ng-disabled="!importForm.$dirty || importForm.$invalid" data-ng-click="importJson()">Import</button>
+        </div>
+      </form>
     </div>
-  </div>
+  </script>
+
+  <script type="text/ng-template" id="tools.html">
+    <header>
+      <h1>Tools</h1>
+    </header>
+    <div class="content">
+      <section>
+        <h3>Data</h3>
+        <div class="button-strip">
+          <button class="button" data-ng-click="importData()">Import</button>
+          <button data-ng-click="exportData()">Export All</button>
+          <button data-ng-click="clearData()">Clear All</button>
+        </div>
+      </section>
+    </div>
+  </script>
 
   <script type="text/ng-template" id="confirmDialog.html">
     <div class="overlay">

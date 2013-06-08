@@ -1,3 +1,16 @@
+var TabSetOptionsApp = angular.module('TabSetOptionsApp', ['tabsetapp'])
+.config(['$routeProvider', function($routeProvider) {
+  $routeProvider.
+    when('/browse', {templateUrl: 'browse.html',   controller: TabSetsController}).
+    when('/import', {templateUrl: 'import.html',   controller: ImportController}).
+    when('/tools', {templateUrl: 'tools.html',   controller: ToolsController}).
+    otherwise({redirectTo: '/browse'});
+}]);
+
+function NavigationController($scope) {
+
+};
+
 function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog, safeApply, fuzzy) {
   $scope.session = session;
   $scope.query = '';
@@ -75,7 +88,7 @@ function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog, s
   };
 
   $scope.launchEntry = function(tab_set, entry) {
-    if (session.openTabSets[tab_set.id] === void 0) {
+    if (!angular.isDefined(session.openTabSets[tab_set.id])) {
       var msgbox = simpleDialog.confirm("confirmDialog.html", {
         "title": "Launch Entry",
         "body": "Do you wish to launch the entire TabSet?",
@@ -83,14 +96,12 @@ function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog, s
         "cancel": "Launch as new tab"
       });
       msgbox.open().then(function(accepted) {
-        if (accepted) {
-          if (session.openTabSets[tab_set.id] === void 0) {
-            session.launchTabSet(tab_set, function(w) {
-              $scope.launchEntry(tab_set, entry);
-            });
-          } else {
+        if (!angular.isDefined(accepted)) {
+          return;
+        } else if (accepted) {
+          session.launchTabSet(tab_set, function(w) {
             $scope.launchEntry(tab_set, entry);
-          }
+          });
         } else {
           chrome.tabs.create({
             'url': entry.url,
@@ -98,8 +109,9 @@ function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog, s
           });
         }
       });
+    } else {
+      session.launchTabSetEntry(tab_set, entry);
     }
-    session.launchTabSetEntry(tab_set, entry);
   };
 }
 
