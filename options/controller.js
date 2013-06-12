@@ -24,22 +24,27 @@ function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog, s
     session.off("changed", onUpdate)
   });
 
-  $scope.fuzzyTabSet = function(tab_set) {
-    if (fuzzy.test($scope.query, tab_set.name)) {
-      return true;
-    }
-    for (var i in tab_set.entries) {
-      var entry = tab_set.entries[i];
-      if ($scope.fuzzyEntry(entry)) {
+  $scope.fuzzyTabSet = function(query) {
+    var entryFilter = $scope.fuzzyEntry(query);
+    return function(tab_set) {
+      if (fuzzy.test(query, tab_set.name)) {
         return true;
       }
-    }
-    return false;
-  }
+      for (var i in tab_set.entries) {
+        var entry = tab_set.entries[i];
+        if (entryFilter(entry)) {
+          return true;
+        }
+      }
+      return false;
+    };
+  };
 
-  $scope.fuzzyEntry = function(entry) {
-    return fuzzy.test($scope.query, entry.title) || fuzzy.test($scope.query, entry.url);
-  }
+  $scope.fuzzyEntry = function(query) {
+    return function(entry) {
+      return fuzzy.test(query, entry.title) || fuzzy.test(query, entry.url);
+    };
+  };
 
   $scope.dropTabSet = function(tab_set) {
     var msgbox = simpleDialog.confirm("confirmDialog.html", {
@@ -145,7 +150,7 @@ function ImportController($scope, $location, simpleDialog, session) {
 
 function ToolsController($scope, $location, simpleDialog, jsonDialog, session) {
   $scope.importData = function() {
-    $location.hash("import");
+    $location.path("/import");
   };
 
   $scope.exportData = function() {

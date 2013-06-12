@@ -10,22 +10,6 @@
   <script type="text/javascript" src="../app.js"></script>
   <script type="text/javascript" src="controller.js"></script>
   <style>
-    textarea {
-      border: 1px solid #BFBFBF;
-      border-radius: 2px;
-      box-sizing: border-box;
-      color: #444;
-      font: inherit;
-      margin: 0;
-      min-height: 2em;
-      padding: 3px;
-      padding-bottom: 4px;
-    }
-    textarea:focus {
-      -webkit-transition: border-color 200ms;
-      border-color: #4d90fe;
-      outline: none;
-    }
     textarea.ng-invalid.ng-dirty {
       -webkit-transition: border-color 100ms;
       border-color: #dc604d;
@@ -34,100 +18,12 @@
     .expandable {
       max-height: 0px;
       overflow: hidden;
-      -webkit-transition: max-height 400ms ease-out;
+      transition: max-height 400ms ease-out;
     }
 
     .expandable.expanded {
       max-height: 200px;
       overflow-y: scroll;
-    }
-
-
-    .scrollbox {
-      overflow-y: scroll;
-      -webkit-overflow-scrolling: touch;
-    }
-    .scrollbox {
-      /* stolen from http://lea.verou.me/2012/04/background-attachment-local/ */
-      background:
-        -webkit-linear-gradient(white 30%, rgba(255,255,255,0)),
-        -webkit-linear-gradient(rgba(255,255,255,0), white 70%) 0 100%,
-        -webkit-radial-gradient(50% 0, farthest-side, rgba(0,0,0,.1), rgba(0,0,0,0)),
-        -webkit-radial-gradient(50% 100%, farthest-side, rgba(0,0,0,.1), rgba(0,0,0,0)) 0 100%;
-      background-repeat: no-repeat;
-      background-color: white;
-      background-size: 100% 40px, 100% 40px, 100% 4px, 100% 4px;
-      background-attachment: local, local, scroll, scroll;
-    }
-
-    .scrollbox::-webkit-scrollbar {
-      height:16px; width:16px;
-    }
-    .scrollbox::-webkit-scrollbar-button {
-      height:0; width:0;
-    }
-    .scrollbox::-webkit-scrollbar-track:vertical,
-    .scrollbox::-webkit-scrollbar-track:horizontal,
-    .scrollbox::-webkit-scrollbar-thumb:vertical,
-    .scrollbox::-webkit-scrollbar-thumb:horizontal {
-      border-color:transparent; border-style:solid;
-    }
-    .scrollbox::-webkit-scrollbar-track:vertical {
-      background-clip:padding-box;
-      background-color:#fff;
-      border-left-width:5px;
-      border-right-width:0;
-    }
-    .scrollbox::-webkit-scrollbar-track:horizontal {
-      background-clip:padding-box;
-      background-color:#fff;
-      border-bottom-width:0;
-      border-top-width:5px;
-    }
-    .scrollbox::-webkit-scrollbar-thumb {
-      -webkit-box-shadow:inset 0 0 1px 1px rgba(0,0,0,.1);/* , inset 0 -1px 0 rgba(0,0,0,.07);*/
-      background-clip:padding-box;
-      background-color:rgba(0,0,0,.2);
-      min-height:28px; padding-top:100px;
-    }
-    .scrollbox::-webkit-scrollbar-thumb:hover {
-      -webkit-box-shadow:inset 0 0 1px 1px rgba(0,0,0,.25);
-      background-color:rgba(0,0,0,.4);
-    }
-    .scrollbox::-webkit-scrollbar-thumb:active {
-      -webkit-box-shadow:inset 0 0 2px 1px rgba(0,0,0,.35);
-      background-color:rgba(0,0,0,.5);
-    }
-    .scrollbox::-webkit-scrollbar-thumb:vertical,
-    .scrollbox::-webkit-scrollbar-track:vertical {
-      border-width:0 3px 0 3px;
-    }
-    .scrollbox::-webkit-scrollbar-thumb:horizontal,
-    .scrollbox::-webkit-scrollbar-track:horizontal {
-      border-width:3px 0 3px 0;
-    }
-    .scrollbox::-webkit-scrollbar-track:hover {
-      -webkit-box-shadow:inset 0 0 1px 1px rgba(0,0,0,.1);
-      background-color:rgba(0,0,0,.05);
-    }
-    .scrollbox::-webkit-scrollbar-track:active {
-      -webkit-box-shadow:inset 0 0 2px 1px rgba(0,0,0,.14);
-      background-color:rgba(0,0,0,.05);
-    }
-
-    pre {
-      display: block;
-      padding: 3px;
-      padding-bottom: 4px;
-      font: inherit;
-      margin: 0;
-      word-break: break-all;
-      word-wrap: break-word;
-      white-space: pre-wrap;
-      background-color: #f5f5f5;
-      border: 1px solid #BFBFBF;
-      border-radius: 2px;
-      box-sizing: border-box;
     }
 
     ul.hlist li {
@@ -136,150 +32,25 @@
       list-style: square inside none;
     }
 
-    .btn {
-      -webkit-align-items: flex-start;
-      padding: 3px 10px 0px;
-      vertical-align: 2px;
-      display: inline-block;
-      text-align: center;
-      text-indent: 0px;
-      word-spacing: 0px;
-      box-sizing: border-box;
-      -webkit-appearance: none;
-      -webkit-user-select: none;
-      background-image: -webkit-linear-gradient(#ededed, #ededed 38%, #dedede);
-      border: 1px solid rgba(0, 0, 0, 0.25);
-      border-radius: 2px;
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.75);
-      color: #444;
-      font: inherit;
-      margin: 0 1px 0 0;
-      text-shadow: 0 1px 0 #F0F0F0;
-      -webkit-padding-end: 10px;
-      -webkit-padding-start: 10px;
-      min-height: 2em;
-      min-width: 4em;
-      text-decoration: none;
-    }
-    .btn.small {
-      padding: 1px 5px 2px;
-      min-height: 1em;
-    }
-    .btn:focus {
-      -webkit-transition: border-color 200ms;
-      border-color: #4d90fe;
-      outline: none;
-    }
-    .btn.disabled {
-      background-image: -webkit-linear-gradient(#f1f1f1, #f1f1f1 38%, #e6e6e6);
-      border-color: rgba(80, 80, 80, 0.2);
-      box-shadow: 0 1px 0 rgba(80, 80, 80, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.75);
-      color: #aaa;
-    }
-    .btn:hover:not(.disabled) {
-      background-image: -webkit-linear-gradient(#f0f0f0, #f0f0f0 38%, #e0e0e0);
-      border-color: rgba(0, 0, 0, 0.3);
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.95);
-      color: black;
-      text-decoration: none;
-    }
-    .btn:active:not(.disabled) {
-      background-image: -webkit-linear-gradient(#e7e7e7, #e7e7e7 38%, #d7d7d7);
-      box-shadow: none;
-      text-shadow: none;
-    }
-
-    .active {
-      cursor: pointer;
-      color: #15C;
-    }
-    .active:hover {
-      color: #555;
-    }
-
-    .highlightable > li > .highlight-area {
-      display: block;
-      position: relative;
-      padding: 5px;
-      z-index: 0;
-    }
-    .highlightable > li > .highlight-area:hover {
-      background-color: rgba(240, 246, 254, 1.0);
-    }
-    .highlightable > li:hover > .highlight-area:not(:hover) {
-      background-color: rgba(240, 246, 254, 0.5);
-    }
-
-    .highlightable > li > .highlight-area .reveal {
-      opacity: 0;
-      -webkit-transition: 150ms opacity;
-    }
-
-    .highlightable > li > .highlight-area:hover .reveal {
-      opacity: 0.7;
-    }
-    .highlightable > li > .highlight-area .reveal:hover {
-      opacity: 1;
-    }
-
-    .highlightable > li > .highlight-area .action {
-      color: inherit;
-      margin-left: 5px;
-      padding: 1px 6px;
-      cursor: pointer;
-    }
-
-    .highlightable > li > .highlight-area .action.right {
-      float: right;
-    }
-
-    .highlightable > li > .highlight-area .badge {
-      font: inherit;
-      background: #8AAAED;
-      border: none;
-      border-radius: 2px;
-      color: white;
-      font-size: 10px;
-    }
-
-    .highlight {
-      background-color: rgba(255, 255, 0, 0.7);
-    }
-    .muted {
-      color: #999999;
-    }
-    .muted > img {
-      opacity: 0.4;
-    }
-    .fit {
-      display: block;
-      overflow-x:hidden;
-      overflow-y: hidden;
-      text-overflow:ellipsis;
-    }
-
-    .view-enter,
-    .view-leave {
-      position:absolute;
-      top: 0;
-    }
     .view-enter {
-      -webkit-transition-delay: 100ms;
-      -webkit-transition: 200ms all;
+      transition: 200ms all;
+    }
+    .view-enter.view-enter-active {
+      transition-delay: 100ms;
     }
     .view-leave {
-      -webkit-transition: 100ms all;
+      transition: 100ms all;
     }
 
     .view-leave.view-leave-active,
     .view-enter {
-      -webkit-margin-start: -20px;
+      margin-left: -20px;
       opacity: 0;
       z-index: 0;
     }
     .view-leave,
     .view-enter.view-enter-active {
-      -webkit-margin-start: 0;
+      margin-left: 0;
       opacity: 1;
       z-index: 1;
     }
@@ -287,7 +58,7 @@
     .list-enter,
     .list-leave,
     .list-move {
-      -webkit-transition: 300ms linear all;
+      transition: 300ms linear all;
       position:relative;
     }
     .list-leave.list-leave-active,
@@ -326,106 +97,111 @@
       </li>
     </ul>
   </div>
-  <div class="view" data-ng-view data-ng-animate="'view'">
-  </div>
+  <div class="viewport" data-ng-view data-ng-animate="'view'"></div>
 
   <script type="text/ng-template" id="browse.html">
-    <header>
-      <h1>Browser Tabsets</h1>
-      <div class="corner cancelable">
-        <input type="search" placeholder="Search" data-ng-model="query">
+    <div class="view">
+      <header class="fixed">
+        <h1>Browser Tabsets</h1>
+        <div class="corner cancelable">
+          <input type="search" placeholder="Search" data-ng-model="query">
+        </div>
+      </header>
+      <div class="content">
+        <ul class="highlightable">
+          <li data-ng-repeat="tab_set in session.allTabSets | filter:fuzzyTabSet(query)" data-ng-animate="'list'">
+            <div class="highlight-area reveal-area active-area" data-ng-click="expanded=!expanded">
+              <dl>
+                <dt>
+                  <a class="action pull-right reveal delete" data-ng-click="dropTabSet(tab_set); $event.stopPropagation()">Delete</a>
+                  <a class="action pull-right badge reveal" data-ng-click="launchTabSet(tab_set); $event.stopPropagation()">Launch</a>
+                  <a class="action pull-right badge reveal" data-ng-click="exportTabSet(tab_set); $event.stopPropagation()">Export</a>
+                  <span class="fit" data-ng-bind-html="tab_set.name | fuzzy_highlight:query"></span>
+                  <a class="action reveal" data-ng-click="renameTabSet(tab_set); $event.stopPropagation()"><i class="icon-edit"></i></a>
+                </dt>
+                <dd>
+                  <ul class="hlist">
+                    <li>Tabs (opened/total): {{ (tab_set.entries | filter:{isOpen:true}).length }} / {{ tab_set.entries.length }}</li>
+                    <li>Last Opened: {{ tab_set.lastOpened.toLocaleString() }}</li>
+                    <li>Last Closed: {{ tab_set.lastClosed.toLocaleString() }}</li>
+                    <li>Created: {{ tab_set.created.toLocaleString() }}</li>
+                  </ul>
+                </dd>
+              </dl>
+            </div>
+            <ul class="scrollbox expandable highlightable" data-ng-class="{'expanded': expanded || query}">
+              <li data-ng-repeat="entry in tab_set.entries | filter:fuzzyEntry(query)" data-ng-animate="'list'">
+                <div class="highlight-area reveal-area">
+                  <dl>
+                    <dt data-ng-class="{'muted': !entry.isOpen}">
+                      <a class="action pull-right reveal delete" data-ng-click="dropTabSetEntry(tab_set, entry)">Delete</a>
+                      <a class="action pull-right badge reveal" data-ng-click="launchEntry(tab_set, entry)">Launch</a>
+                      <span class="fit">
+                        <img data-ng-src="{{ entry.url | favicon }}">
+                        <span data-ng-bind-html="entry.title | default:entry.url | fuzzy_highlight:query"></span>
+                      </span>
+                    </dt>
+                    <dd>
+                      <span class="fit" data-ng-bind-html="entry.url | fuzzy_highlight:query"></span>
+                    </dd>
+                  </dl>
+                </div>
+              </li>
+            </ul>
+          </li>
+        </ul>
       </div>
-    </header>
-    <div class="content">
-      <ul class="highlightable">
-        <li data-ng-repeat="tab_set in session.allTabSets | filter:fuzzyTabSet" data-ng-animate="'list'">
-          <div class="highlight-area active" data-ng-click="expanded=!expanded">
-            <dl>
-              <dt class="fit">
-                <span data-ng-bind-html="tab_set.name | fuzzy_highlight:query"></span>
-                <a class="action reveal" data-ng-click="renameTabSet(tab_set); $event.stopPropagation()"><i class="icon-edit"></i></a>
-                <a class="action right reveal delete" data-ng-click="dropTabSet(tab_set); $event.stopPropagation()">Delete</a>
-                <a class="action right badge reveal" data-ng-click="launchTabSet(tab_set); $event.stopPropagation()">Launch</a>
-                <a class="action right badge reveal" data-ng-click="exportTabSet(tab_set); $event.stopPropagation()">Export</a>
-              </dt>
-              <dd>
-                <ul class="hlist">
-                  <li>Tabs (opened/total): {{ (tab_set.entries | filter:{isOpen:true}).length }} / {{ tab_set.entries.length }}</li>
-                  <li>Last Opened: {{ tab_set.lastOpened.toLocaleString() }}</li>
-                  <li>Last Closed: {{ tab_set.lastClosed.toLocaleString() }}</li>
-                  <li>Created: {{ tab_set.created.toLocaleString() }}</li>
-                </ul>
-              </dd>
-            </dl>
-          </div>
-          <ul class="scrollbox expandable highlightable" data-ng-class="{'expanded': expanded || query}">
-            <li data-ng-repeat="entry in tab_set.entries | filter:fuzzyEntry" data-ng-animate="'list'">
-              <div class="highlight-area">
-                <dl>
-                  <dt class="fit" data-ng-class="{'muted': !entry.isOpen}">
-                    <img data-ng-src="{{ entry.url | favicon }}">
-                    <span data-ng-bind-html="entry.title | default:entry.url | fuzzy_highlight:query"></span>
-                    <a class="action right reveal delete" data-ng-click="dropTabSetEntry(tab_set, entry)">Delete</a>
-                    <a class="action right badge reveal" data-ng-click="launchEntry(tab_set, entry)">Launch</a>
-                  </dt>
-                  <dd class="fit">
-                    {{ entry.url }}
-                  </dd>
-                </dl>
-              </div>
-            </li>
-          </ul>
-        </li>
-      </ul>
     </div>
   </script>
 
   <script type="text/ng-template" id="import.html">
-    <header>
-      <h1>Import Tabsets</h1>
-    </header>
-    <div class="content">
-      <form novalidate name="importForm">
-        <p>Choose a file or paste exported json into the textarea.</p>
-        <p><input data-text-file-input data-ng-model="json" type="file"></p>
-        <textarea data-json="array" rows="24" style="width: 700px;" data-ng-model="json"></textarea>
-        <div class="button-strip">
-          <button data-ng-disabled="!importForm.$dirty" data-ng-click="reset()">Clear</button>
-          <button type="submit" data-ng-disabled="!importForm.$dirty || importForm.$invalid" data-ng-click="importJson()">Import</button>
-        </div>
-      </form>
+    <div class="view">
+      <header class="fixed">
+        <h1>Import Tabsets</h1>
+      </header>
+      <div class="content">
+        <form novalidate name="importForm">
+          <p>Choose a file or paste exported json into the textarea.</p>
+          <p><input data-text-file-input data-ng-model="json" type="file"></p>
+          <textarea data-json="array" rows="24" style="width: 700px;" data-ng-model="json"></textarea>
+          <div class="button-strip">
+            <button data-ng-disabled="!importForm.$dirty" data-ng-click="reset()">Clear</button>
+            <button type="submit" data-ng-disabled="!importForm.$dirty || importForm.$invalid" data-ng-click="importJson()">Import</button>
+          </div>
+        </form>
+      </div>
     </div>
   </script>
 
   <script type="text/ng-template" id="tools.html">
-    <header>
-      <h1>Tools</h1>
-    </header>
-    <div class="content">
-      <section>
-        <h3>Data</h3>
-        <div class="button-strip">
-          <button class="button" data-ng-click="importData()">Import</button>
-          <button data-ng-click="exportData()">Export All</button>
-          <button data-ng-click="clearData()">Clear All</button>
-        </div>
-      </section>
+    <div class="view">
+      <header class="fixed">
+        <h1>Tools</h1>
+      </header>
+      <div class="content">
+        <section>
+          <h3>Data</h3>
+          <div class="button-strip">
+            <button class="button" data-ng-click="importData()">Import</button>
+            <button data-ng-click="exportData()">Export All</button>
+            <button data-ng-click="clearData()">Clear All</button>
+          </div>
+        </section>
+      </div>
     </div>
   </script>
 
   <script type="text/ng-template" id="confirmDialog.html">
-    <div class="overlay">
-      <div class="page">
-        <h1>{{ title }}</h1>
-        <div class="content-area">
-          {{ body }}
-        </div>
-        <div class="action-area">
-          <div class="action-area-right">
-            <div class="button-strip">
-              <a class="btn" data-ng-click="cancel()">{{ cancel_btn | default:'Cancel' }}</a>
-              <a class="btn" data-ng-click="accept()">{{ accept_btn | default:'Accept' }}</a>
-            </div>
+    <div class="page">
+      <h1>{{ title }}</h1>
+      <div class="content-area">
+        {{ body }}
+      </div>
+      <div class="action-area">
+        <div class="action-area-right">
+          <div class="button-strip">
+            <a class="btn" data-ng-click="cancel()">{{ cancel_btn | default:'Cancel' }}</a>
+            <a class="btn" data-ng-click="accept()">{{ accept_btn | default:'Accept' }}</a>
           </div>
         </div>
       </div>
@@ -433,18 +209,16 @@
   </script>
 
   <script type="text/ng-template" id="exportDialog.html">
-    <div class="overlay">
-      <div class="page">
-        <h1>{{ title | default:'Export' }}</h1>
-        <div class="content-area">
-          <pre data-auto-select style="max-width:600px; max-height:300px; overflow-y:auto;">{{ obj | json }}</pre>
-        </div>
-        <div class="action-area">
-          <div class="action-area-right">
-            <div class="button-strip">
-              <a class="btn" download="{{ fname }}" data-ng-href="{{ dl_link }}" data-ng-click="close()">Download</a>
-              <a class="btn" data-ng-click="close()">Done</a>
-            </div>
+    <div class="page">
+      <h1>{{ title | default:'Export' }}</h1>
+      <div class="content-area">
+        <pre data-auto-select style="max-width:600px; max-height:300px; overflow-y:auto;">{{ obj | json }}</pre>
+      </div>
+      <div class="action-area">
+        <div class="action-area-right">
+          <div class="button-strip">
+            <a class="btn" download="{{ fname }}" data-ng-href="{{ dl_link }}" data-ng-click="close()">Download</a>
+            <a class="btn" data-ng-click="close()">Done</a>
           </div>
         </div>
       </div>
@@ -452,19 +226,17 @@
   </script>
 
   <script type="text/ng-template" id="inputDialog.html">
-    <div class="overlay">
-      <div class="page">
-        <h1 data-ng-show="title">{{ title }}</h1>
-        <div class="content-area">
-          <p data-ng-show="body">{{ body }}</p>
-          <input style="width: 100%;" type="text" placeholder="{{ placeholder }}" data-ng-model="input">
-        </div>
-        <div class="action-area">
-          <div class="action-area-right">
-            <div class="button-strip">
-              <a class="btn" data-ng-click="cancel()">{{ cancel_btn | default:'Cancel' }}</a>
-              <a class="btn" data-ng-click="accept()">{{ accept_btn | default:'Accept' }}</a>
-            </div>
+    <div class="page">
+      <h1 data-ng-show="title">{{ title }}</h1>
+      <div class="content-area">
+        <p data-ng-show="body">{{ body }}</p>
+        <input style="width: 100%;" type="text" placeholder="{{ placeholder }}" data-ng-model="input">
+      </div>
+      <div class="action-area">
+        <div class="action-area-right">
+          <div class="button-strip">
+            <a class="btn" data-ng-click="cancel()">{{ cancel_btn | default:'Cancel' }}</a>
+            <a class="btn" data-ng-click="accept()">{{ accept_btn | default:'Accept' }}</a>
           </div>
         </div>
       </div>

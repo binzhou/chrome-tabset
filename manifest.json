@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "TabSet",
   "description": "",
-  "version": "0.1",
+  "version": "0.9.1",
   "permissions": [
     "alarms",
     "tabs",
@@ -24,7 +24,7 @@
       "38": "img/inactive-38.png"
     },
     "default_title": "No active TabSet",
-    "default_popup": "browser_action/popup.html"
+    "default_popup": "popup/popup.html"
   },
   "options_page": "options/options.html"
 }
