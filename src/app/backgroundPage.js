@@ -314,13 +314,7 @@ var SessionManager = function(cb) {
     self.allTabSets = tsm.tabSets;
 
     chrome.windows.onRemoved.addListener(function(wid) {
-      var s_window = self.trackedWindows[wid];
-      if (!_.isUndefined(s_window)) {
-        s_window.close();
-        delete self.openTabSets[s_window.tabSet.id];
-        delete self.trackedWindows[wid];
-        self.save();
-      }
+      self.detachWindow(wid);
     });
 
     chrome.windows.onFocusChanged.addListener(function(wid) {
@@ -461,6 +455,17 @@ SessionManager.prototype.createTabSet = function(w, args, cb) {
   self.refresh();
   if (!_.isUndefined(cb)) {
     cb(tab_set);
+  }
+}
+
+SessionManager.prototype.detachWindow = function(wid) {
+  var self = this;
+  var s_window = self.trackedWindows[wid];
+  if (!_.isUndefined(s_window)) {
+    s_window.close();
+    delete self.openTabSets[s_window.tabSet.id];
+    delete self.trackedWindows[wid];
+    self.save();
   }
 }
 
@@ -610,10 +615,8 @@ SessionManager.prototype.dropTabSet = function(tab_set) {
   var self = this;
   var s_window = self.openTabSets[tab_set.id];
   if (!_.isUndefined(s_window)) {
-    delete self.openTabSets[tab_set.id];
-    delete self.trackedWindows[s_window.id];
+    self.detachWindow(s_window.id);
   }
-
   self.tabSetManager.dropTabSet(tab_set);
   self.save();
   self.refresh();

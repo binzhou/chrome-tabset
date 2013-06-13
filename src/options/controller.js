@@ -2,6 +2,7 @@ var TabSetOptionsApp = angular.module('TabSetOptionsApp', ['tabsetapp'])
 .config(['$routeProvider', function($routeProvider) {
   $routeProvider.
     when('/browse', {templateUrl: 'browse.html',   controller: TabSetsController}).
+    when('/create', {templateUrl: 'create.html', controller: CreateController}).
     when('/import', {templateUrl: 'import.html',   controller: ImportController}).
     when('/tools', {templateUrl: 'tools.html',   controller: ToolsController}).
     otherwise({redirectTo: '/browse'});
@@ -118,7 +119,57 @@ function TabSetsController($dialog, $scope, session, jsonDialog, simpleDialog, s
       session.launchTabSetEntry(tab_set, entry);
     }
   };
-}
+};
+
+function CreateController($scope, $location, session, safeApply, simpleDialog) {
+  $scope.currentWindow = null;
+
+  $scope.populate = function() {
+    $scope.loading = true;
+    chrome.windows.getCurrent({'populate': true}, function(w) {
+      safeApply($scope, function($scope) {
+        $scope.currentWindow = w;
+      });
+    })
+  };
+
+  $scope.validTab = function(tab) {
+    return session.isTrackableUrl(tab.url);
+  };
+
+  $scope.reset = function() {
+    $scope.useCurrentWindow = true;
+    $scope.name = '';
+  };
+
+  $scope.createTabSet = function() {
+    var args = {'name': $scope.name};
+    if ($scope.useCurrentWindow) {
+      session.detachWindow($scope.currentWindow.id);
+      session.createTabSet($scope.currentWindow, args);
+      var msgbox = simpleDialog.confirm("confirmDialog.html", {
+        "title": "TabSets Created",
+        "body": "Current window is now TabSet '" + args.name + "'.",
+        "accept": "Done",
+        "cancel": "Create More"
+      });
+      msgbox.open().then(function(done) {
+        $scope.reset();
+        if (done) {
+          $location.path("/browse");
+        }
+      });
+    } else {
+      chrome.windows.create({'focused': true}, function(w) {
+        session.createTabSet(w, args);
+        $location.path("/browse");
+      });
+    }
+  };
+
+  $scope.reset();
+  $scope.populate();
+};
 
 function ImportController($scope, $location, simpleDialog, session) {
   $scope.json = "";
@@ -141,12 +192,12 @@ function ImportController($scope, $location, simpleDialog, session) {
       msgbox.open().then(function(done) {
         $scope.reset();
         if (done) {
-          $location.hash("tabsets");
+          $location.path("/browse");
         }
       });
     }
   }
-}
+};
 
 function ToolsController($scope, $location, simpleDialog, jsonDialog, session) {
   $scope.importData = function() {
@@ -173,10 +224,7 @@ function ToolsController($scope, $location, simpleDialog, jsonDialog, session) {
     msgbox.open().then(function(accepted) {
       if (accepted) {
         session.dropAllTabSets();
-        chrome.windows.getCurrent({'populate':false}, function(w) {
-          session.updateBrowserAction(w.id);
-        });
       }
     });
   };
-}
+};

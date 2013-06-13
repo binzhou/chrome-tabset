@@ -15,7 +15,7 @@
   <script type="text/javascript" src="controller.js"></script>
   <style>
     body {
-      width: 360px;
+      width: 400px;
       padding-left: 10px;
       padding-right: 10px;
     }
@@ -56,11 +56,12 @@
       <div class="controls">
         <input type="search" placeholder="Search" data-ng-model="query">
         <div class="spacer"></div>
+        <a class="btn" data-ng-click="launchOptions('create')">Create</a>
         <a class="btn" data-ng-click="launchOptions('browse')">Options</a>
       </div>
     </header>
     <div class="content scrollbox">
-      <ul class="highlightable">
+      <ul class="highlightable" data-ng-if="session.allTabSets.length > 0">
         <li data-ng-repeat="tab_set in session.allTabSets | filter:fuzzyTabSet(query)" data-ng-animate="'list'">
           <div class="highlight-area reveal-area">
             <dl>
@@ -75,6 +76,11 @@
           </div>
         </li>
       </ul>
+      <p data-ng-if="session.allTabSets.length == 0">
+      No TabSets found.
+      <a data-ng-click="launchOptions('create')">Create</a> a new TabSet or
+      <a data-ng-click="launchOptions('import')">import</a> existing TabSets.
+      </p>
     </div>
   </div>
 

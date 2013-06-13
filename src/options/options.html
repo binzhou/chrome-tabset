@@ -94,6 +94,9 @@
     </ul>
     <ul class="menu">
       <li>
+        <a data-active-link data-active-target="parent" href="#/create">Create</a>
+      </li>
+      <li>
         <a data-active-link data-active-target="parent" href="#/import">Import</a>
       </li>
       <li>
@@ -112,7 +115,7 @@
         </div>
       </header>
       <div class="content">
-        <ul class="highlightable">
+        <ul class="highlightable" data-ng-if="session.allTabSets.length > 0">
           <li data-ng-repeat="tab_set in session.allTabSets | filter:fuzzyTabSet(query)" data-ng-animate="'list'">
             <div class="highlight-area reveal-area active-area" data-ng-click="expanded=!expanded">
               <dl>
@@ -156,6 +159,56 @@
             </ul>
           </li>
         </ul>
+        <p data-ng-if="session.allTabSets.length == 0">
+          No TabSets found.
+          <a href="#/create">Create</a> a new TabSet or
+          <a href="#/import">import</a> existing TabSets.
+        </p>
+      </div>
+    </div>
+  </script>
+
+  <script type="text/ng-template" id="create.html">
+    <div class="view">
+      <header class="fixed with-controls">
+        <h1>Create TabSet</h1>
+        <div class="controls">
+          <input type="text" placeholder="New TabSet Name" data-ng-model="name">
+          <label>
+            <input type="checkbox" data-ng-model="useCurrentWindow">
+            <span>use current window</span>
+          </label>
+          <div class="spacer"></div>
+          <button data-ng-disabled="!name || !currentWindow" data-ng-click="createTabSet()">Create</button>
+        </div>
+      </header>
+      <div class="content">
+        <section>
+          <h3>Preview</h3>
+          <ul class="highlightable" data-ng-show="useCurrentWindow && currentWindow && currentWindow.tabs.length > 0">
+            <li data-ng-repeat="tab in currentWindow.tabs | filter:validTab">
+              <div class="highlight-area">
+                <dl>
+                  <dt>
+                    <span class="fit">
+                      <img data-ng-src="{{ tab.url | favicon }}">
+                      {{ tab.title }}
+                    </span>
+                  </dt>
+                  <dd class="fit">
+                    {{ tab.url }}
+                  </dd>
+                </dl>
+              </div>
+            </li>
+          </ul>
+          <p data-ng-show="currentWindow && (!useCurrentWindow || !currentWindow || currentWindow.tabs.length == 0)">
+            Empty.
+          </p>
+          <p data-ng-show="!currentWindow">
+            Loading...
+          </p>
+        </section>
       </div>
     </div>
   </script>
