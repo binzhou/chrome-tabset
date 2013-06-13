@@ -1,0 +1,30 @@
+{
+  "manifest_version": 2,
+  "name": "TabSet",
+  "description": "",
+  "version": "0.9.18",
+  "permissions": [
+    "alarms",
+    "tabs",
+    "storage",
+    "chrome://favicon/"
+  ],
+  "background": {
+    "scripts": [
+      "assets/js/uuid-v4.js",
+      "assets/js/asevented.js",
+      "assets/js/angular.js",
+      "assets/js/underscore.js",
+      "app/backgroundPage.js"
+    ]
+  },
+  "browser_action": {
+    "default_icon": {
+      "19": "assets/img/inactive-19.png",
+      "38": "assets/img/inactive-38.png"
+    },
+    "default_title": "No active TabSet",
+    "default_popup": "popup/popup.html"
+  },
+  "options_page": "options/options.html"
+}

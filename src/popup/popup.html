@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" data-ng-app="TabSetPopupApp" data-ng-csp>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <!-- build:css ../assets/css/main.css -->
+  <link rel="stylesheet" type="text/css" href="../assets/css/chrome-bootstrap.css">
+  <link rel="stylesheet" type="text/css" href="../assets/css/fontawesome.css">
+  <!-- endbuild -->
+  <!-- build:js ../assets/js/main.js -->
+  <script type="text/javascript" src="../assets/js/angular.js"></script>
+  <script type="text/javascript" src="../assets/js/angular-sanitize.js"></script>
+  <script type="text/javascript" src="../assets/js/ui-bootstrap-dialog.js"></script>
+  <script type="text/javascript" src="../app/app.js"></script>
+  <!-- endbuild -->
+  <script type="text/javascript" src="controller.js"></script>
+  <style>
+    body {
+      width: 360px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    .content {
+      max-height: 360px;
+    }
+
+    .list-enter,
+    .list-leave,
+    .list-move {
+      transition: 300ms linear all;
+      position:relative;
+    }
+    .list-leave.list-leave-active,
+    .list-enter {
+      left:-10px;
+      opacity:0;
+    }
+    .list-leave,
+    .list-enter.list-enter-active {
+      left:0;
+      opacity:1;
+    }
+
+    .list-move {
+      opacity:0.5;
+    }
+    .list-move.list-move-active {
+      opacity:1;
+    }
+  </style>
+</head>
+<body data-ng-show="ready" data-ng-cloak data-ng-controller="PopupController">
+
+  <div class="view" data-ng-if="!tab_set">
+    <header class="with-controls">
+      <h1>TabSets</h1>
+      <div class="controls">
+        <input type="search" placeholder="Search" data-ng-model="query">
+        <div class="spacer"></div>
+        <a class="btn" data-ng-click="launchOptions('browse')">Options</a>
+      </div>
+    </header>
+    <div class="content scrollbox">
+      <ul class="highlightable">
+        <li data-ng-repeat="tab_set in session.allTabSets | filter:fuzzyTabSet(query)" data-ng-animate="'list'">
+          <div class="highlight-area reveal-area">
+            <dl>
+              <dt>
+                <a class="action pull-right badge reveal" data-ng-click="launchTabSet(tab_set); $event.stopPropagation()">Launch</a>
+                <span class="fit" data-ng-bind-html="tab_set.name | fuzzy_highlight:query"></span>
+              </dt>
+              <dd>
+                Tabs (opened/total): {{ (tab_set.entries | filter:{isOpen:true}).length }} / {{ tab_set.entries.length }}
+              </dd>
+            </dl>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="view" data-ng-if="tab_set">
+    <header class="with_controls">
+      <h1>
+        {{ tab_set.name }}
+      </h1>
+      <div class="controls">
+        <input type="search" placeholder="Search" data-ng-model="query">
+        <div class="spacer"></div>
+        <a class="btn" data-ng-click="launchOptions('browse')">Options</a>
+      </div>
+    </header>
+    <div class="content scrollbox">
+      <ul class="highlightable">
+        <li data-ng-repeat="entry in tab_set.entries | filter:fuzzyEntry(query)" data-ng-animate="'list'">
+          <div class="highlight-area reveal-area">
+            <dl>
+              <dt data-ng-class="{'muted': !entry.isOpen}">
+                <a class="action pull-right reveal delete" data-ng-click="dropTabSetEntry(entry)">Delete</a>
+                <a class="action pull-right badge reveal" data-ng-click="launchEntry(entry)">Launch</a>
+                <span class="fit">
+                  <img data-ng-src="{{ entry.url | favicon }}">
+                  <span data-ng-bind-html="entry.title | default:entry.url | fuzzy_highlight:query"></span>
+                </span>
+              </dt>
+              <dd>
+                <span class="fit" data-ng-bind-html="entry.url | fuzzy_highlight:query"></span>
+              </dd>
+            </dl>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</body>
